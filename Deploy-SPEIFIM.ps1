@@ -31,7 +31,7 @@ function Get-ScriptRoot {
 
 function Test-IsAdministrator {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
-    $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+    $principal = New-Object Security.Principal.WindowsPrincipal -ArgumentList $identity
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
@@ -219,14 +219,29 @@ function Enable-FimAuditPolicy {
         [bool]$EnableHandleManipulation,
         [bool]$EnableProcessCreation
     )
+
+    function Set-AuditSubcategory {
+        param(
+            [string]$SubcategoryGuid,
+            [string]$Name,
+            [string]$Success,
+            [string]$Failure
+        )
+
+        & auditpol.exe /set "/subcategory:$SubcategoryGuid" "/success:$Success" "/failure:$Failure" | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "auditpol failed for $Name ($SubcategoryGuid) with exit code $LASTEXITCODE. FIM will still scan files, but Security Log correlation may be incomplete."
+        }
+    }
+
     if ($EnableFileSystem) {
-        & auditpol.exe /set /subcategory:"File System" /success:enable /failure:enable | Out-Null
+        Set-AuditSubcategory -SubcategoryGuid "{0CCE921D-69AE-11D9-BED3-505054503030}" -Name "File System" -Success "enable" -Failure "enable"
     }
     if ($EnableHandleManipulation) {
-        & auditpol.exe /set /subcategory:"Handle Manipulation" /success:enable /failure:enable | Out-Null
+        Set-AuditSubcategory -SubcategoryGuid "{0CCE9223-69AE-11D9-BED3-505054503030}" -Name "Handle Manipulation" -Success "enable" -Failure "enable"
     }
     if ($EnableProcessCreation) {
-        & auditpol.exe /set /subcategory:"Process Creation" /success:enable /failure:disable | Out-Null
+        Set-AuditSubcategory -SubcategoryGuid "{0CCE922B-69AE-11D9-BED3-505054503030}" -Name "Process Creation" -Success "enable" -Failure "disable"
     }
 }
 
@@ -251,8 +266,8 @@ function Add-FileSystemSacl {
         $propagation = [System.Security.AccessControl.PropagationFlags]"None"
     }
 
-    $everyone = New-Object System.Security.Principal.SecurityIdentifier("S-1-1-0")
-    $rule = New-Object System.Security.AccessControl.FileSystemAuditRule($everyone, $rights, $inherit, $propagation, $auditFlags)
+    $everyone = New-Object System.Security.Principal.SecurityIdentifier -ArgumentList "S-1-1-0"
+    $rule = New-Object System.Security.AccessControl.FileSystemAuditRule -ArgumentList $everyone, $rights, $inherit, $propagation, $auditFlags
     $acl.AddAuditRule($rule)
     Set-Acl -LiteralPath $expanded -AclObject $acl
 }

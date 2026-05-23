@@ -26,7 +26,7 @@ $ErrorActionPreference = "Stop"
 
 function Test-IsAdministrator {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
-    $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+    $principal = New-Object Security.Principal.WindowsPrincipal -ArgumentList $identity
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
@@ -94,7 +94,7 @@ function Remove-FileSystemSacl {
 
     $rights = [System.Security.AccessControl.FileSystemRights]"CreateFiles,CreateDirectories,WriteData,AppendData,WriteExtendedAttributes,WriteAttributes,Delete,DeleteSubdirectoriesAndFiles,ChangePermissions,TakeOwnership"
     $auditFlags = [System.Security.AccessControl.AuditFlags]"Success,Failure"
-    $everyone = New-Object System.Security.Principal.SecurityIdentifier("S-1-1-0")
+    $everyone = New-Object System.Security.Principal.SecurityIdentifier -ArgumentList "S-1-1-0"
 
     foreach ($item in $Register.items) {
         if ($item.enabled -eq $false) { continue }
@@ -113,7 +113,7 @@ function Remove-FileSystemSacl {
                 $inherit = [System.Security.AccessControl.InheritanceFlags]"None"
             }
             $propagation = [System.Security.AccessControl.PropagationFlags]"None"
-            $rule = New-Object System.Security.AccessControl.FileSystemAuditRule($everyone, $rights, $inherit, $propagation, $auditFlags)
+            $rule = New-Object System.Security.AccessControl.FileSystemAuditRule -ArgumentList $everyone, $rights, $inherit, $propagation, $auditFlags
             $acl = Get-Acl -LiteralPath $path
             [void]$acl.RemoveAuditRule($rule)
             Set-Acl -LiteralPath $path -AclObject $acl

@@ -111,6 +111,39 @@ function Get-AclState {
     }
 }
 
+function New-FimErrorDetail {
+    param([object]$ErrorRecord)
+
+    $parts = New-Object "System.Collections.Generic.List[string]"
+    if ($ErrorRecord -and $ErrorRecord.Exception) {
+        $parts.Add(($ErrorRecord.Exception.GetType().FullName + ": " + $ErrorRecord.Exception.Message))
+    }
+    if ($ErrorRecord -and $ErrorRecord.InvocationInfo -and $ErrorRecord.InvocationInfo.PositionMessage) {
+        $parts.Add([string]$ErrorRecord.InvocationInfo.PositionMessage)
+    }
+    if ($ErrorRecord -and $ErrorRecord.ScriptStackTrace) {
+        $parts.Add([string]$ErrorRecord.ScriptStackTrace)
+    }
+    return ($parts -join [Environment]::NewLine)
+}
+
+function Write-FimDiagnosticError {
+    param([string]$Context, [object]$ErrorRecord)
+
+    try {
+        Ensure-Directory $LogsRoot
+        $path = Join-Path $LogsRoot ("fim-error-" + (Get-Date -Format "yyyy-MM-dd") + ".log")
+        $message = @(
+            "[$((Get-Date).ToString('o'))] $Context"
+            (New-FimErrorDetail -ErrorRecord $ErrorRecord)
+            ""
+        ) -join [Environment]::NewLine
+        Add-Content -LiteralPath $path -Value $message -Encoding UTF8
+    } catch {
+        return
+    }
+}
+
 function Expand-FimPath {
     param([string]$Path)
     return [Environment]::ExpandEnvironmentVariables($Path)
@@ -139,7 +172,7 @@ function Get-ChildFileSafe {
     }
 
     $script:LastWalkLimitHit = $false
-    $results = New-Object System.Collections.Generic.List[object]
+    $results = New-Object "System.Collections.Generic.List[object]"
     $queue = New-Object System.Collections.Queue
     $queue.Enqueue([pscustomobject]@{ Path = $Path; Depth = 0 })
 
@@ -171,7 +204,7 @@ function Get-ChildFileSafe {
 function Get-FimInventory {
     param([object]$Register)
 
-    $entries = New-Object System.Collections.Generic.List[object]
+    $entries = New-Object "System.Collections.Generic.List[object]"
 
     foreach ($item in $Register.items) {
         if ($item.enabled -eq $false) { continue }
@@ -224,6 +257,14 @@ function Get-FimInventory {
             $aclState = $null
             if ($aclEnabled) { $aclState = Get-AclState -Path $file.FullName }
             $hash = Get-FileSha256OrNull -Path $file.FullName -Enabled $hashEnabled -FileSize ([int64]$file.Length) -MaxFileSizeMB $maxFileSizeMB
+            $owner = $null
+            $aclHash = $null
+            $aclError = $null
+            if ($null -ne $aclState) {
+                $owner = $aclState.owner
+                $aclHash = $aclState.aclHash
+                $aclError = $aclState.aclError
+            }
             $entries.Add([ordered]@{
                 id = [string]$item.id
                 configuredPath = [string]$item.path
@@ -236,10 +277,10 @@ function Get-FimInventory {
                 size = [int64]$file.Length
                 creationTimeUtc = $file.CreationTimeUtc.ToString("o")
                 lastWriteTimeUtc = $file.LastWriteTimeUtc.ToString("o")
-                owner = if ($aclState) { $aclState.owner } else { $null }
-                aclHash = if ($aclState) { $aclState.aclHash } else { $null }
+                owner = $owner
+                aclHash = $aclHash
                 hashError = $script:LastHashError
-                aclError = if ($aclState) { $aclState.aclError } else { $null }
+                aclError = $aclError
             })
             continue
         }
@@ -269,6 +310,14 @@ function Get-FimInventory {
             $dirAcl = $null
             if ($aclEnabled) { $dirAcl = Get-AclState -Path $expanded }
             $dir = Get-Item -LiteralPath $expanded -Force
+            $dirOwner = $null
+            $dirAclHash = $null
+            $dirAclError = $null
+            if ($null -ne $dirAcl) {
+                $dirOwner = $dirAcl.owner
+                $dirAclHash = $dirAcl.aclHash
+                $dirAclError = $dirAcl.aclError
+            }
             $dirEntry = [ordered]@{
                 id = [string]$item.id
                 configuredPath = [string]$item.path
@@ -281,10 +330,10 @@ function Get-FimInventory {
                 size = $null
                 creationTimeUtc = $dir.CreationTimeUtc.ToString("o")
                 lastWriteTimeUtc = $dir.LastWriteTimeUtc.ToString("o")
-                owner = if ($dirAcl) { $dirAcl.owner } else { $null }
-                aclHash = if ($dirAcl) { $dirAcl.aclHash } else { $null }
+                owner = $dirOwner
+                aclHash = $dirAclHash
                 hashError = $null
-                aclError = if ($dirAcl) { $dirAcl.aclError } else { $null }
+                aclError = $dirAclError
                 scanLimitHit = $false
             }
             $entries.Add($dirEntry)
@@ -296,6 +345,14 @@ function Get-FimInventory {
                 $aclState = $null
                 if ($aclEnabled) { $aclState = Get-AclState -Path $file.FullName }
                 $hash = Get-FileSha256OrNull -Path $file.FullName -Enabled $hashEnabled -FileSize ([int64]$file.Length) -MaxFileSizeMB $maxFileSizeMB
+                $owner = $null
+                $aclHash = $null
+                $aclError = $null
+                if ($null -ne $aclState) {
+                    $owner = $aclState.owner
+                    $aclHash = $aclState.aclHash
+                    $aclError = $aclState.aclError
+                }
                 $entries.Add([ordered]@{
                     id = [string]$item.id
                     configuredPath = [string]$item.path
@@ -308,10 +365,10 @@ function Get-FimInventory {
                     size = [int64]$file.Length
                     creationTimeUtc = $file.CreationTimeUtc.ToString("o")
                     lastWriteTimeUtc = $file.LastWriteTimeUtc.ToString("o")
-                    owner = if ($aclState) { $aclState.owner } else { $null }
-                    aclHash = if ($aclState) { $aclState.aclHash } else { $null }
+                    owner = $owner
+                    aclHash = $aclHash
                     hashError = $script:LastHashError
-                    aclError = if ($aclState) { $aclState.aclError } else { $null }
+                    aclError = $aclError
                 })
             }
         }
@@ -488,7 +545,7 @@ function Test-BaselineIntegrity {
 function Compare-FimInventory {
     param([array]$BaselineEntries, [array]$CurrentEntries)
 
-    $findings = New-Object System.Collections.Generic.List[object]
+    $findings = New-Object "System.Collections.Generic.List[object]"
     $baseByPath = @{}
     $curByPath = @{}
 
@@ -664,15 +721,23 @@ function New-AuditCorrelationIndex {
                 }
                 $key = $objectName.ToLowerInvariant()
                 if (-not $index.ContainsKey($key)) {
+                    $processName = $null
+                    $processId = $null
+                    $accessMask = $null
+                    $accesses = $null
+                    if ($map.ContainsKey("ProcessName")) { $processName = $map["ProcessName"] }
+                    if ($map.ContainsKey("ProcessId")) { $processId = $map["ProcessId"] }
+                    if ($map.ContainsKey("AccessMask")) { $accessMask = $map["AccessMask"] }
+                    if ($map.ContainsKey("Accesses")) { $accesses = $map["Accesses"] }
                     $index[$key] = [ordered]@{
-                    windows_event_id = $event.Id
-                    windows_event_time = $event.TimeCreated.ToString("o")
-                    user = $user
-                    process_name = if ($map.ContainsKey("ProcessName")) { $map["ProcessName"] } else { $null }
-                    process_id = if ($map.ContainsKey("ProcessId")) { $map["ProcessId"] } else { $null }
-                    object_name = $objectName
-                    access_mask = if ($map.ContainsKey("AccessMask")) { $map["AccessMask"] } else { $null }
-                    accesses = if ($map.ContainsKey("Accesses")) { $map["Accesses"] } else { $null }
+                        windows_event_id = $event.Id
+                        windows_event_time = $event.TimeCreated.ToString("o")
+                        user = $user
+                        process_name = $processName
+                        process_id = $processId
+                        object_name = $objectName
+                        access_mask = $accessMask
+                        accesses = $accesses
                     }
                 }
             }
@@ -710,24 +775,29 @@ function Invoke-ValidateConfig {
 
 function Invoke-CreateBaseline {
     param([string]$Ticket)
-    $settings = Read-JsonFile -Path $SettingsPath
-    $register = Read-JsonFile -Path $RegisterPath
-    $entries = Get-FimInventory -Register $register
-    $baseline = Save-Baseline -Settings $settings -Register $register -Entries $entries -Ticket $Ticket
-    $event = New-FimEvent -Settings $settings -EventId 9200 -EventType "fim.baseline_created" -Severity "medium" -Data @{
-        baseline_id = $baseline.baselineId
-        change_ticket = $Ticket
-        entry_count = $entries.Count
+    try {
+        $settings = Read-JsonFile -Path $SettingsPath
+        $register = Read-JsonFile -Path $RegisterPath
+        $entries = Get-FimInventory -Register $register
+        $baseline = Save-Baseline -Settings $settings -Register $register -Entries $entries -Ticket $Ticket
+        $event = New-FimEvent -Settings $settings -EventId 9200 -EventType "fim.baseline_created" -Severity "medium" -Data @{
+            baseline_id = $baseline.baselineId
+            change_ticket = $Ticket
+            entry_count = $entries.Count
+        }
+        Publish-FimEvent -Settings $settings -Event $event
+        return $baseline
+    } catch {
+        Write-FimDiagnosticError -Context "CreateBaseline failed" -ErrorRecord $_
+        throw ("CreateBaseline internal failure: " + (New-FimErrorDetail -ErrorRecord $_))
     }
-    Publish-FimEvent -Settings $settings -Event $event
-    return $baseline
 }
 
 function Enter-FimScanLock {
     param([object]$Settings)
 
     Ensure-Directory $RunRoot
-    $script:FimMutex = New-Object System.Threading.Mutex($false, "Local\SPEI-FIM-Scan")
+    $script:FimMutex = New-Object System.Threading.Mutex -ArgumentList $false, "Local\SPEI-FIM-Scan"
     $acquired = $script:FimMutex.WaitOne(0)
     if (-not $acquired) {
         return [ordered]@{
