@@ -185,7 +185,7 @@ function Get-ChildFileSafe {
             $results.Add($file)
             if ($MaxFiles -gt 0 -and $results.Count -ge $MaxFiles) {
                 $script:LastWalkLimitHit = $true
-                return @($results)
+                return $results.ToArray()
             }
         }
 
@@ -198,7 +198,7 @@ function Get-ChildFileSafe {
         }
     }
 
-    return @($results)
+    return $results.ToArray()
 }
 
 function Get-FimInventory {
@@ -374,7 +374,7 @@ function Get-FimInventory {
         }
     }
 
-    return @($entries)
+    return $entries.ToArray()
 }
 
 function New-FimEvent {
@@ -682,7 +682,7 @@ function Compare-FimInventory {
         }
     }
 
-    return @($findings)
+    return $findings.ToArray()
 }
 
 function Get-EventDataMap {
