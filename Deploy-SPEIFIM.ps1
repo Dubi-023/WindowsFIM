@@ -266,10 +266,25 @@ function Register-FimScheduledTask {
 
     $taskName = "SPEI-FIM-Scan"
     $taskPath = "\SPEI-FIM\"
-    $escapedScript = '"' + $ScriptPath + '"'
-    $tr = "powershell.exe -NoProfile -ExecutionPolicy $ExecutionPolicyForTask -File $escapedScript -Mode Scan"
+    $argument = "-NoProfile -ExecutionPolicy $ExecutionPolicyForTask -File `"$ScriptPath`" -Mode Scan"
 
-    & schtasks.exe /Create /TN "$taskPath$taskName" /SC HOURLY /MO $IntervalHours /RU SYSTEM /RL HIGHEST /F /TR $tr | Out-Null
+    try {
+        $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $argument
+        $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(5) -RepetitionInterval (New-TimeSpan -Hours $IntervalHours) -RepetitionDuration (New-TimeSpan -Days 3650)
+        $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -RunLevel Highest
+        $settings = New-ScheduledTaskSettingsSet -Compatibility Win8 -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew
+        Register-ScheduledTask -TaskName $taskName -TaskPath $taskPath -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
+        return
+    } catch {
+        Write-Warning "Register-ScheduledTask failed, falling back to schtasks.exe: $($_.Exception.Message)"
+    }
+
+    $quotedScript = '\"' + $ScriptPath + '\"'
+    $taskRun = "powershell.exe -NoProfile -ExecutionPolicy $ExecutionPolicyForTask -File $quotedScript -Mode Scan"
+    & schtasks.exe /Create /TN "$taskPath$taskName" /SC HOURLY /MO $IntervalHours /RU SYSTEM /RL HIGHEST /F /TR $taskRun | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to register scheduled task $taskPath$taskName. schtasks.exe exit code: $LASTEXITCODE"
+    }
 }
 
 function Test-FilebeatService {
