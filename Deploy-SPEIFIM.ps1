@@ -9,7 +9,7 @@ This installer intentionally uses only Windows-native capabilities.
 
 [CmdletBinding()]
 param(
-    [string]$DeploymentConfig = (Join-Path $PSScriptRoot "config\deployment.local.json"),
+    [string]$DeploymentConfig = "",
     [switch]$SkipBaseline,
     [switch]$SkipAuditPolicy,
     [switch]$SkipSacl,
@@ -18,6 +18,16 @@ param(
 
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = "Stop"
+
+function Get-ScriptRoot {
+    if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+        return $PSScriptRoot
+    }
+    if ($MyInvocation.MyCommand.Path) {
+        return Split-Path -Parent $MyInvocation.MyCommand.Path
+    }
+    return (Get-Location).Path
+}
 
 function Test-IsAdministrator {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -135,6 +145,19 @@ function Clear-PlainTokenInDeploymentConfig {
         $json.efk.authTokenPlainText = ""
         ($json | ConvertTo-Json -Depth 8) | Set-Content -LiteralPath $Path -Encoding UTF8
     }
+}
+
+function Initialize-DefaultDeploymentConfig {
+    param(
+        [string]$ExamplePath,
+        [string]$TargetPath
+    )
+
+    Copy-Item -LiteralPath $ExamplePath -Destination $TargetPath -Force
+    $json = Get-Content -LiteralPath $TargetPath -Raw | ConvertFrom-Json
+    $json.assetId = $env:COMPUTERNAME
+    $json.initialChangeTicket = "PILOT-LOCAL"
+    ($json | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath $TargetPath -Encoding UTF8
 }
 
 function New-SettingsFile {
@@ -260,14 +283,21 @@ function Test-FilebeatService {
     Write-Host "Filebeat service detected: $ServiceName ($($service.Status))"
 }
 
+$ScriptRoot = Get-ScriptRoot
+if ([string]::IsNullOrWhiteSpace($DeploymentConfig)) {
+    $DeploymentConfig = Join-Path $ScriptRoot "config\deployment.local.json"
+}
+
 if (-not (Test-IsAdministrator)) {
     throw "This installer must be run as Administrator."
 }
 
-$exampleConfig = Join-Path $PSScriptRoot "config\deployment.example.json"
+$exampleConfig = Join-Path $ScriptRoot "config\deployment.example.json"
 if (-not (Test-Path -LiteralPath $DeploymentConfig)) {
-    Copy-Item -LiteralPath $exampleConfig -Destination $DeploymentConfig -Force
-    throw "Created $DeploymentConfig from the example template. Edit it first, then run this installer again."
+    Initialize-DefaultDeploymentConfig -ExamplePath $exampleConfig -TargetPath $DeploymentConfig
+    Write-Host "Created default deployment config: $DeploymentConfig"
+    Write-Host "Default assetId: $env:COMPUTERNAME"
+    Write-Host "Default initialChangeTicket: PILOT-LOCAL"
 }
 
 $deployment = Read-JsonFile -Path $DeploymentConfig
@@ -295,9 +325,9 @@ Ensure-Directory $queueRoot
 Ensure-Directory $evidenceRoot
 Ensure-Directory $efkRoot
 
-Copy-Item -LiteralPath (Join-Path $PSScriptRoot "src\SPEI-FIM.ps1") -Destination (Join-Path $programFilesRoot "SPEI-FIM.ps1") -Force
-Copy-Item -LiteralPath (Join-Path $PSScriptRoot "src\modules") -Destination $programFilesRoot -Recurse -Force
-Copy-Item -LiteralPath (Join-Path $PSScriptRoot "efk\*") -Destination $efkRoot -Force
+Copy-Item -LiteralPath (Join-Path $ScriptRoot "src\SPEI-FIM.ps1") -Destination (Join-Path $programFilesRoot "SPEI-FIM.ps1") -Force
+Copy-Item -LiteralPath (Join-Path $ScriptRoot "src\modules") -Destination $programFilesRoot -Recurse -Force
+Copy-Item -LiteralPath (Join-Path $ScriptRoot "efk\*") -Destination $efkRoot -Force
 
 New-SettingsFile -Deployment $deployment -SettingsPath $settingsPath -TokenFile $tokenFile
 $efkMode = "filebeat"
@@ -318,7 +348,7 @@ if ($clearPlaintextToken) {
 if ($deployment.criticalFilesRegisterPath -and (Test-Path -LiteralPath $deployment.criticalFilesRegisterPath)) {
     Copy-Item -LiteralPath $deployment.criticalFilesRegisterPath -Destination $registerPath -Force
 } else {
-    Copy-Item -LiteralPath (Join-Path $PSScriptRoot "config\critical-files-register.example.json") -Destination $registerPath -Force
+    Copy-Item -LiteralPath (Join-Path $ScriptRoot "config\critical-files-register.example.json") -Destination $registerPath -Force
 }
 
 Protect-Path -Path $programFilesRoot

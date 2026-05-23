@@ -7,13 +7,28 @@ Create config\deployment.local.json first, then run:
 
 [CmdletBinding()]
 param(
-    [string]$OutputPath = (Join-Path $PSScriptRoot "SPEI-FIM-OneClick.zip")
+    [string]$OutputPath = ""
 )
 
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = "Stop"
 
-$localConfig = Join-Path $PSScriptRoot "config\deployment.local.json"
+function Get-ScriptRoot {
+    if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+        return $PSScriptRoot
+    }
+    if ($MyInvocation.MyCommand.Path) {
+        return Split-Path -Parent $MyInvocation.MyCommand.Path
+    }
+    return (Get-Location).Path
+}
+
+$ScriptRoot = Get-ScriptRoot
+if ([string]::IsNullOrWhiteSpace($OutputPath)) {
+    $OutputPath = Join-Path $ScriptRoot "SPEI-FIM-OneClick.zip"
+}
+
+$localConfig = Join-Path $ScriptRoot "config\deployment.local.json"
 if (-not (Test-Path -LiteralPath $localConfig)) {
     throw "Missing config\deployment.local.json. Copy deployment.example.json, edit it, then run again."
 }
@@ -37,7 +52,7 @@ $items = @(
     "config",
     "efk",
     "docs"
-) | ForEach-Object { Join-Path $PSScriptRoot $_ }
+) | ForEach-Object { Join-Path $ScriptRoot $_ }
 
 Compress-Archive -Path $items -DestinationPath $OutputPath -Force
 Write-Host "Created package: $OutputPath"
