@@ -441,6 +441,164 @@ function Get-ProtectedToken {
     }
 }
 
+function Get-SyslogFacilityCode {
+    param([string]$Facility)
+    switch ([string]$Facility) {
+        "kern" { return 0 }
+        "user" { return 1 }
+        "mail" { return 2 }
+        "daemon" { return 3 }
+        "auth" { return 4 }
+        "syslog" { return 5 }
+        "lpr" { return 6 }
+        "news" { return 7 }
+        "uucp" { return 8 }
+        "cron" { return 9 }
+        "authpriv" { return 10 }
+        "ftp" { return 11 }
+        "local0" { return 16 }
+        "local1" { return 17 }
+        "local2" { return 18 }
+        "local3" { return 19 }
+        "local4" { return 20 }
+        "local5" { return 21 }
+        "local6" { return 22 }
+        "local7" { return 23 }
+        default { return 16 }
+    }
+}
+
+function Get-SyslogSeverityCode {
+    param([string]$Severity)
+    switch ([string]$Severity) {
+        "critical" { return 2 }
+        "high" { return 3 }
+        "medium" { return 4 }
+        "low" { return 6 }
+        default { return 5 }
+    }
+}
+
+function ConvertTo-SyslogToken {
+    param([string]$Value, [int]$MaxLength = 32)
+    if ([string]::IsNullOrWhiteSpace($Value)) { return "-" }
+    $token = ([string]$Value) -replace "[^A-Za-z0-9_.-]", "_"
+    if ($token.Length -gt $MaxLength) {
+        return $token.Substring(0, $MaxLength)
+    }
+    return $token
+}
+
+function ConvertTo-FimSyslogMessage {
+    param([object]$Settings, [object]$Event)
+
+    $facility = "local0"
+    if ($Settings.efk.PSObject.Properties.Name -contains "syslogFacility") {
+        $facility = [string]$Settings.efk.syslogFacility
+    }
+    $appName = "SPEI-FIM"
+    if ($Settings.efk.PSObject.Properties.Name -contains "syslogAppName") {
+        $appName = [string]$Settings.efk.syslogAppName
+    }
+
+    $priority = ((Get-SyslogFacilityCode -Facility $facility) * 8) + (Get-SyslogSeverityCode -Severity ([string]$Event.severity))
+    $timestamp = [string]$Event.event_time
+    if ([string]::IsNullOrWhiteSpace($timestamp)) {
+        $timestamp = (Get-Date).ToString("o")
+    }
+    $hostname = ConvertTo-SyslogToken -Value $env:COMPUTERNAME -MaxLength 255
+    $app = ConvertTo-SyslogToken -Value $appName -MaxLength 48
+    $messageId = ConvertTo-SyslogToken -Value ([string]$Event.event_type) -MaxLength 32
+    $json = ConvertTo-JsonText -Object $Event
+
+    return ("<{0}>1 {1} {2} {3} - {4} - {5}" -f $priority, $timestamp, $hostname, $app, $messageId, $json)
+}
+
+function Send-FimSyslogUdp {
+    param([string]$TargetHost, [int]$Port, [string]$Message)
+
+    $udp = New-Object System.Net.Sockets.UdpClient
+    try {
+        $bytes = [Text.Encoding]::UTF8.GetBytes($Message)
+        [void]$udp.Send($bytes, $bytes.Length, $TargetHost, $Port)
+        return $true
+    } finally {
+        $udp.Close()
+    }
+}
+
+function Send-FimSyslogTcp {
+    param(
+        [string]$TargetHost,
+        [int]$Port,
+        [string]$Message,
+        [int]$TimeoutSeconds,
+        [string]$Framing
+    )
+
+    $client = New-Object System.Net.Sockets.TcpClient
+    try {
+        $async = $client.BeginConnect($TargetHost, $Port, $null, $null)
+        $timeoutMs = [Math]::Max(1, $TimeoutSeconds) * 1000
+        if (-not $async.AsyncWaitHandle.WaitOne($timeoutMs, $false)) {
+            $client.Close()
+            throw "Syslog TCP connect timeout to ${TargetHost}:$Port"
+        }
+        $client.EndConnect($async)
+        $stream = $client.GetStream()
+        $payload = $Message + "`n"
+        if ($Framing -eq "octet-counted") {
+            $messageBytes = [Text.Encoding]::UTF8.GetBytes($Message)
+            $payload = ([string]$messageBytes.Length) + " " + $Message
+        }
+        $bytes = [Text.Encoding]::UTF8.GetBytes($payload)
+        $stream.Write($bytes, 0, $bytes.Length)
+        $stream.Flush()
+        return $true
+    } finally {
+        $client.Close()
+    }
+}
+
+function Send-FimEventToSyslog {
+    param([object]$Settings, [object]$Event)
+
+    $hostName = ""
+    if ($Settings.efk.PSObject.Properties.Name -contains "syslogHost") {
+        $hostName = [string]$Settings.efk.syslogHost
+    }
+    if ([string]::IsNullOrWhiteSpace($hostName)) {
+        return $false
+    }
+
+    $port = 5140
+    if ($Settings.efk.PSObject.Properties.Name -contains "syslogPort") {
+        $port = [int]$Settings.efk.syslogPort
+    }
+    $protocol = "udp"
+    if ($Settings.efk.PSObject.Properties.Name -contains "syslogProtocol") {
+        $protocol = ([string]$Settings.efk.syslogProtocol).ToLowerInvariant()
+    }
+    $framing = "newline"
+    if ($Settings.efk.PSObject.Properties.Name -contains "syslogFraming") {
+        $framing = ([string]$Settings.efk.syslogFraming).ToLowerInvariant()
+    }
+    $timeoutSeconds = 15
+    if ($Settings.efk.PSObject.Properties.Name -contains "timeoutSeconds") {
+        $timeoutSeconds = [int]$Settings.efk.timeoutSeconds
+    }
+
+    $message = ConvertTo-FimSyslogMessage -Settings $Settings -Event $Event
+    try {
+        if ($protocol -eq "tcp") {
+            return (Send-FimSyslogTcp -TargetHost $hostName -Port $port -Message $message -TimeoutSeconds $timeoutSeconds -Framing $framing)
+        }
+        return (Send-FimSyslogUdp -TargetHost $hostName -Port $port -Message $message)
+    } catch {
+        return $false
+    }
+}
+
 function Send-FimEventToEfk {
     param(
         [object]$Settings,
@@ -454,6 +612,7 @@ function Send-FimEventToEfk {
         $mode = [string]$Settings.efk.mode
     }
     if ($mode -eq "filebeat") { return $true }
+    if ($mode -eq "syslog") { return (Send-FimEventToSyslog -Settings $Settings -Event $Event) }
     if ($mode -ne "http") { return $true }
 
     $headers = @{

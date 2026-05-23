@@ -19,6 +19,12 @@
     "filebeatServiceName": "filebeat",
     "filebeatReadPrincipal": "",
     "endpoint": "",
+    "syslogHost": "",
+    "syslogPort": 5140,
+    "syslogProtocol": "udp",
+    "syslogFacility": "local0",
+    "syslogAppName": "SPEI-FIM",
+    "syslogFraming": "newline",
     "authTokenPlainText": "",
     "timeoutSeconds": 15,
     "tlsSkipCertificateCheck": false

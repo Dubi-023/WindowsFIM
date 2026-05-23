@@ -75,9 +75,9 @@ Use this template on the Windows endpoint or in your managed Filebeat policy:
 efk\filebeat-windows-spei-fim.example.yml
 ```
 
-## Log format
+## Log format and EFK forwarding
 
-SPEI-FIM does not write syslog by default. It writes newline-delimited JSON:
+SPEI-FIM always writes newline-delimited JSON locally:
 
 ```text
 C:\ProgramData\SPEI-FIM\Logs\fim-YYYY-MM-DD.jsonl
@@ -91,7 +91,22 @@ Example event:
 {"event_id":9101,"event_type":"fim.file_modified","event_time":"2026-05-22T12:00:00+08:00","hostname":"WIN11-001","asset_id":"SPEI-WKS-001","environment":"production","source":"SPEI-FIM","severity":"high","path":"C:\\Windows\\System32\\drivers\\etc\\hosts","change_type":"hash_changed"}
 ```
 
-Syslog is not required for this design. If a central pipeline requires syslog, add that transformation at the log pipeline layer rather than changing the endpoint FIM scanner.
+For a central rsyslog/syslog collector, set `efk.mode` to `syslog` in `config\deployment.local.json`. SPEI-FIM will keep local JSONL evidence and forward RFC5424 syslog messages with the JSON event as the message body.
+
+```json
+"efk": {
+  "enabled": true,
+  "mode": "syslog",
+  "syslogHost": "<EFK_SYSLOG_IP>",
+  "syslogPort": 5140,
+  "syslogProtocol": "udp",
+  "syslogFacility": "local0",
+  "syslogAppName": "SPEI-FIM",
+  "syslogFraming": "newline"
+}
+```
+
+Confirm `syslogProtocol` with the EFK owner. Use `tcp` only if the receiver is configured for TCP syslog; use `udp` for standard rsyslog UDP collection.
 
 ## Default scope
 

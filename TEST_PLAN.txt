@@ -119,8 +119,8 @@ Cleanup:
 
   Remove-Item "C:\Program Files\SPEI-FIM\fim-validation-test.txt" -Force
 
-Filebeat / EFK Test
--------------------
+Filebeat / Syslog EFK Test
+--------------------------
 Confirm Filebeat harvests:
 
   C:\ProgramData\SPEI-FIM\Logs\fim-*.jsonl
@@ -144,6 +144,22 @@ Expected EFK result:
   log_source : "spei-fim" and asset_id : "<assetId>"
   event_type : "fim.test_alert"
   event_type : "fim.file_added"
+
+If the EFK owner provides an rsyslog/syslog collector instead of a Filebeat Beats input, configure:
+
+  efk.mode = syslog
+  efk.syslogHost = <EFK_SYSLOG_IP>
+  efk.syslogPort = 5140
+  efk.syslogProtocol = udp or tcp
+
+Generate a test event:
+
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Program Files\SPEI-FIM\SPEI-FIM.ps1" -Mode SendTestAlert
+
+Expected syslog result:
+- The EFK owner can see an RFC5424 message from the workstation hostname.
+- The syslog message body contains JSON with event_type = fim.test_alert.
+- Local JSONL evidence is still written even if central forwarding is delayed.
 
 Performance Checks
 ------------------

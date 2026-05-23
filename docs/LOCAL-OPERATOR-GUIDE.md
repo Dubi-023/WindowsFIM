@@ -45,7 +45,18 @@ Filebeat must be configured separately by the EFK owner to harvest that path.
 
 Important: Filebeat needs access to the Windows endpoint log file. The normal deployment is Filebeat running on the Windows endpoint and shipping to the Linux EFK server. A Filebeat instance running only on Linux cannot read `C:\ProgramData\SPEI-FIM\Logs\fim-*.jsonl` unless a separate approved file-sharing mechanism is provided.
 
-The log format is not syslog. It is JSONL/NDJSON: one JSON object per line. Do not configure syslog parsing for `spei-fim`; configure Filebeat `ndjson` parsing.
+The local log format is JSONL/NDJSON: one JSON object per line. Do not configure syslog parsing for the local file; configure Filebeat `ndjson` parsing.
+
+If the EFK team provides a central rsyslog/syslog collector, set this before deployment:
+
+```json
+"mode": "syslog",
+"syslogHost": "<EFK_SYSLOG_IP>",
+"syslogPort": 5140,
+"syslogProtocol": "udp"
+```
+
+In syslog mode, SPEI-FIM still writes the local JSONL file and also sends RFC5424 syslog messages with the JSON event body.
 
 If Filebeat runs under a custom service account, set this before deployment:
 

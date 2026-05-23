@@ -179,6 +179,30 @@ function New-SettingsFile {
     if (($Deployment.efk.PSObject.Properties.Name -contains "endpoint") -and $Deployment.efk.endpoint) {
         $efkEndpoint = [string]$Deployment.efk.endpoint
     }
+    $syslogHost = ""
+    if (($Deployment.efk.PSObject.Properties.Name -contains "syslogHost") -and $Deployment.efk.syslogHost) {
+        $syslogHost = [string]$Deployment.efk.syslogHost
+    }
+    $syslogPort = 5140
+    if (($Deployment.efk.PSObject.Properties.Name -contains "syslogPort") -and $Deployment.efk.syslogPort) {
+        $syslogPort = [int]$Deployment.efk.syslogPort
+    }
+    $syslogProtocol = "udp"
+    if (($Deployment.efk.PSObject.Properties.Name -contains "syslogProtocol") -and $Deployment.efk.syslogProtocol) {
+        $syslogProtocol = [string]$Deployment.efk.syslogProtocol
+    }
+    $syslogFacility = "local0"
+    if (($Deployment.efk.PSObject.Properties.Name -contains "syslogFacility") -and $Deployment.efk.syslogFacility) {
+        $syslogFacility = [string]$Deployment.efk.syslogFacility
+    }
+    $syslogAppName = "SPEI-FIM"
+    if (($Deployment.efk.PSObject.Properties.Name -contains "syslogAppName") -and $Deployment.efk.syslogAppName) {
+        $syslogAppName = [string]$Deployment.efk.syslogAppName
+    }
+    $syslogFraming = "newline"
+    if (($Deployment.efk.PSObject.Properties.Name -contains "syslogFraming") -and $Deployment.efk.syslogFraming) {
+        $syslogFraming = [string]$Deployment.efk.syslogFraming
+    }
     $efkTimeoutSeconds = 15
     if (($Deployment.efk.PSObject.Properties.Name -contains "timeoutSeconds") -and $Deployment.efk.timeoutSeconds) {
         $efkTimeoutSeconds = [int]$Deployment.efk.timeoutSeconds
@@ -204,6 +228,12 @@ function New-SettingsFile {
             localJsonLogPath = "C:\ProgramData\SPEI-FIM\Logs\fim-*.jsonl"
             filebeatServiceName = $filebeatServiceName
             endpoint = $efkEndpoint
+            syslogHost = $syslogHost
+            syslogPort = $syslogPort
+            syslogProtocol = $syslogProtocol
+            syslogFacility = $syslogFacility
+            syslogAppName = $syslogAppName
+            syslogFraming = $syslogFraming
             tokenFile = $TokenFile
             timeoutSeconds = $efkTimeoutSeconds
             tlsSkipCertificateCheck = $efkTlsSkipCertificateCheck
