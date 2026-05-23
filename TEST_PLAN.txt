@@ -177,12 +177,22 @@ Evidence to Save
 
 Rollback
 --------
-If the pilot fails, disable the scheduled task first:
+If the pilot fails and evidence should be preserved, run normal uninstall:
 
-  schtasks /Change /TN "\SPEI-FIM\SPEI-FIM-Scan" /DISABLE
+  powershell.exe -ExecutionPolicy Bypass -File .\Uninstall-SPEIFIM.ps1
 
-Then preserve logs for review:
+Or double-click:
+
+  UNINSTALL-AS-ADMIN.bat
+
+Normal uninstall removes the scheduled task and C:\Program Files\SPEI-FIM, while preserving evidence:
 
   C:\ProgramData\SPEI-FIM\Logs
   C:\ProgramData\SPEI-FIM\Baseline
   C:\ProgramData\SPEI-FIM\Config
+
+For full local cleanup after evidence is collected:
+
+  powershell.exe -ExecutionPolicy Bypass -File .\Uninstall-SPEIFIM.ps1 -PurgeData -RemoveSacl -RemoveEventSource
+
+Use -DisableAuditPolicy only if Windows File System auditing is not required by any other endpoint control.

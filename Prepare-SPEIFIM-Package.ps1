@@ -47,7 +47,10 @@ if (Test-Path -LiteralPath $OutputPath) {
 $items = @(
     "Deploy-SPEIFIM.ps1",
     "INSTALL-AS-ADMIN.bat",
+    "Uninstall-SPEIFIM.ps1",
+    "UNINSTALL-AS-ADMIN.bat",
     "README.md",
+    "TEST_PLAN.txt",
     "src",
     "config",
     "efk",

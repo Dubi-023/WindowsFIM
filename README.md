@@ -20,6 +20,24 @@ The batch wrapper requests Administrator privileges and runs the PowerShell inst
 powershell.exe -ExecutionPolicy Bypass -File .\Deploy-SPEIFIM.ps1
 ```
 
+## One-click local uninstall
+
+Ask the local operator to double-click:
+
+```text
+UNINSTALL-AS-ADMIN.bat
+```
+
+The default uninstall removes the scheduled task and `C:\Program Files\SPEI-FIM`, but preserves `C:\ProgramData\SPEI-FIM` as audit evidence.
+
+For full local cleanup:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File .\Uninstall-SPEIFIM.ps1 -PurgeData -RemoveSacl -RemoveEventSource
+```
+
+`-DisableAuditPolicy` is intentionally not part of the default full cleanup because Windows File System auditing may be used by other controls on the endpoint.
+
 ## HQ package command
 
 After creating `config\deployment.local.json`, build the package with:

@@ -80,6 +80,35 @@ Validate configuration:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Program Files\SPEI-FIM\SPEI-FIM.ps1" -Mode ValidateConfig
 ```
 
+## Uninstall
+
+For normal uninstall, double-click:
+
+```text
+UNINSTALL-AS-ADMIN.bat
+```
+
+Normal uninstall removes:
+
+- Scheduled task `\SPEI-FIM\SPEI-FIM-Scan`
+- `C:\Program Files\SPEI-FIM`
+
+Normal uninstall preserves:
+
+- `C:\ProgramData\SPEI-FIM\Logs`
+- `C:\ProgramData\SPEI-FIM\Baseline`
+- `C:\ProgramData\SPEI-FIM\Config`
+- Windows Event Log source `SPEI-FIM`
+- Windows audit policy and SACL rules
+
+For full cleanup, run as Administrator:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File .\Uninstall-SPEIFIM.ps1 -PurgeData -RemoveSacl -RemoveEventSource
+```
+
+Use `-DisableAuditPolicy` only if the endpoint does not need File System auditing for any other control.
+
 ## Production hardening
 
 Before formal production use:
