@@ -35,6 +35,8 @@ In `config\deployment.local.json`:
 - `assetId`
 - `initialChangeTicket`
 
+Keep `logRetentionDaysLocal` at `180` or higher for SPEI evidence retention. `logMaxSizeMB` defaults to `1024` as a local disk safety cap for old log files.
+
 Default log shipping mode is `efk.mode = "filebeat"`. In this mode SPEI-FIM writes JSONL logs to:
 
 ```text

@@ -211,6 +211,10 @@ function New-SettingsFile {
     if ($Deployment.efk.PSObject.Properties.Name -contains "tlsSkipCertificateCheck") {
         $efkTlsSkipCertificateCheck = [bool]$Deployment.efk.tlsSkipCertificateCheck
     }
+    $logMaxSizeMB = 1024
+    if ($Deployment.PSObject.Properties.Name -contains "logMaxSizeMB") {
+        $logMaxSizeMB = [int]$Deployment.logMaxSizeMB
+    }
 
     $settings = [ordered]@{
         toolName = "SPEI-FIM"
@@ -221,6 +225,7 @@ function New-SettingsFile {
         scanIntervalHours = [int]$Deployment.scanIntervalHours
         programDataRoot = "C:\ProgramData\SPEI-FIM"
         logRetentionDaysLocal = [int]$Deployment.logRetentionDaysLocal
+        logMaxSizeMB = $logMaxSizeMB
         auditCorrelationLookbackMinutes = [int]$Deployment.auditCorrelationLookbackMinutes
         efk = [ordered]@{
             enabled = [bool]$Deployment.efk.enabled

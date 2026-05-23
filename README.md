@@ -131,6 +131,7 @@ The scanner is non-blocking and read-only. It includes these controls to reduce 
 - Per-file hash/ACL failures are logged as findings instead of stopping the whole scan.
 - Windows Security Log correlation is read once per scan, not once per finding.
 - Filebeat is granted read-only access to SPEI-FIM logs when its service account is known.
+- Local log retention is enforced on each scanner run. The default keeps at least 180 days and applies a 1024 MB safety cap to old local log files.
 
 ## Compliance mapping
 
@@ -138,5 +139,5 @@ The scanner is non-blocking and read-only. It includes these controls to reduce 
 - Monitoring at least every 24 hours: default scheduled scan is every 12 hours.
 - OS and DB manager critical paths: configured in `critical-files-register.json`.
 - Alerting: events are written locally and forwarded to EFK.
-- Log protection and retention: local logs are ACL protected; central retention must be enforced on EFK for at least 180 days.
+- Log protection and retention: local logs are ACL protected and retained locally for at least 180 days by default; central retention must also be enforced on EFK for at least 180 days.
 - Review evidence: baseline, local JSONL logs, Windows Event Log, and EFK records provide evidence.

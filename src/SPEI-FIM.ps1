@@ -36,6 +36,7 @@ $BaselineHashPath = Join-Path $BaselineRoot "baseline-current.sha256"
 $script:FimMutex = $null
 $script:LastHashError = $null
 $script:LastWalkLimitHit = $false
+$script:LogRetentionChecked = $false
 
 function Ensure-Directory {
     param([string]$Path)
@@ -411,6 +412,61 @@ function Write-FimLocalLog {
     Add-Content -LiteralPath $logFile -Value (ConvertTo-JsonText -Object $Event) -Encoding UTF8
 }
 
+function Invoke-FimLocalLogRetention {
+    param([object]$Settings)
+
+    if ($script:LogRetentionChecked) { return }
+    $script:LogRetentionChecked = $true
+
+    try {
+        Ensure-Directory $LogsRoot
+        $retentionDays = 180
+        if ($Settings -and ($Settings.PSObject.Properties.Name -contains "logRetentionDaysLocal")) {
+            $retentionDays = [int]$Settings.logRetentionDaysLocal
+        }
+        if ($retentionDays -lt 180) {
+            $retentionDays = 180
+        }
+
+        $maxSizeMB = 1024
+        if ($Settings -and ($Settings.PSObject.Properties.Name -contains "logMaxSizeMB")) {
+            $maxSizeMB = [int]$Settings.logMaxSizeMB
+        }
+
+        $cutoff = (Get-Date).AddDays(-1 * $retentionDays)
+        $files = @(Get-ChildItem -LiteralPath $LogsRoot -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -like "fim-*.jsonl" -or $_.Name -like "fim-error-*.log" })
+
+        foreach ($file in $files) {
+            if ($file.LastWriteTime -lt $cutoff) {
+                Remove-Item -LiteralPath $file.FullName -Force -ErrorAction SilentlyContinue
+            }
+        }
+
+        if ($maxSizeMB -le 0) { return }
+
+        $maxBytes = [int64]$maxSizeMB * 1MB
+        $todayJson = "fim-" + (Get-Date -Format "yyyy-MM-dd") + ".jsonl"
+        $remaining = @(Get-ChildItem -LiteralPath $LogsRoot -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -like "fim-*.jsonl" -or $_.Name -like "fim-error-*.log" } |
+            Sort-Object LastWriteTimeUtc)
+        $totalBytes = [int64]0
+        foreach ($file in $remaining) {
+            $totalBytes += [int64]$file.Length
+        }
+
+        foreach ($file in $remaining) {
+            if ($totalBytes -le $maxBytes) { break }
+            if ($file.Name -eq $todayJson) { continue }
+            $size = [int64]$file.Length
+            Remove-Item -LiteralPath $file.FullName -Force -ErrorAction SilentlyContinue
+            $totalBytes -= $size
+        }
+    } catch {
+        return
+    }
+}
+
 function Write-FimWindowsEvent {
     param([object]$Settings, [object]$Event)
     $source = [string]$Settings.eventSource
@@ -663,6 +719,7 @@ function Flush-FimQueue {
 
 function Publish-FimEvent {
     param([object]$Settings, [object]$Event)
+    Invoke-FimLocalLogRetention -Settings $Settings
     Write-FimLocalLog -Event $Event
     Write-FimWindowsEvent -Settings $Settings -Event $Event
     [void](Send-FimEventToEfk -Settings $Settings -Event $Event)

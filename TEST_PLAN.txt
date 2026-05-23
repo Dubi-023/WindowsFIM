@@ -171,6 +171,9 @@ Run during or immediately after a manual scan:
   Get-ChildItem "C:\ProgramData\SPEI-FIM\Logs\*.jsonl" |
     Select-Object Name,@{n="MB";e={[math]::Round($_.Length/1MB,2)}}
 
+  Get-ChildItem "C:\ProgramData\SPEI-FIM\Logs" -File |
+    Measure-Object Length -Sum
+
   Get-WinEvent -FilterHashtable @{
     LogName='Security'
     Id=4663,4670,4660
@@ -186,6 +189,7 @@ Pilot Acceptance Criteria
 - No fim.scan_limit_hit events under the default core scope.
 - Controlled file addition produces fim.file_added.
 - JSONL events are valid JSON and parse with ConvertFrom-Json.
+- Local JSONL retention is configured for at least 180 days.
 - Filebeat forwards fim.test_alert to EFK.
 - EFK stores events in the approved index with at least 180 days retention.
 - EFK alert rules notify designated personnel for critical/high findings.
