@@ -1,0 +1,188 @@
+SPEI-FIM Windows Workstation Pilot Test Plan
+===========================================
+
+Purpose
+-------
+Validate that SPEI-FIM installs correctly, performs non-blocking FIM scans, detects controlled file changes, writes JSONL logs, and can be harvested by Filebeat into the EFK platform.
+
+Scope
+-----
+Use the default core Windows workstation scope only:
+- C:\Windows\System32\drivers\etc\hosts
+- C:\Windows\System32\Tasks
+- C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup
+- C:\Program Files\SPEI-FIM
+- C:\ProgramData\SPEI-FIM\Config
+
+Do not enable database manager placeholder paths during the first pilot unless the DB product and instance paths have been confirmed.
+
+Log Format
+----------
+SPEI-FIM does not write syslog by default.
+It writes JSONL/NDJSON logs:
+
+  C:\ProgramData\SPEI-FIM\Logs\fim-YYYY-MM-DD.jsonl
+
+Each line is one JSON event. Filebeat must parse this input as NDJSON.
+
+Pre-Installation Checks
+-----------------------
+1. Log in to the Windows 11 workstation with an account that can run PowerShell as Administrator.
+2. Extract the SPEI-FIM package locally.
+3. Create the local deployment config:
+
+   copy .\config\deployment.example.json .\config\deployment.local.json
+   notepad .\config\deployment.local.json
+
+4. Update at least:
+
+   assetId
+   initialChangeTicket
+
+5. Keep these defaults for the first pilot:
+
+   scanIntervalHours = 12
+   auditCorrelationLookbackMinutes = 900
+   auditPolicy.enableFileSystem = true
+   auditPolicy.enableHandleManipulation = false
+   auditPolicy.enableProcessCreation = false
+   efk.mode = filebeat
+
+Installation Test
+-----------------
+Run as Administrator:
+
+  .\Deploy-SPEIFIM.ps1
+
+Expected result:
+- No unhandled PowerShell errors.
+- C:\Program Files\SPEI-FIM\SPEI-FIM.ps1 exists.
+- C:\ProgramData\SPEI-FIM\Config\critical-files-register.json exists.
+- Scheduled task \SPEI-FIM\SPEI-FIM-Scan exists.
+- Application Event Log contains SPEI-FIM events.
+
+Verification commands:
+
+  Test-Path "C:\Program Files\SPEI-FIM\SPEI-FIM.ps1"
+  Test-Path "C:\ProgramData\SPEI-FIM\Config\critical-files-register.json"
+  schtasks /Query /TN "\SPEI-FIM\SPEI-FIM-Scan" /V /FO LIST
+  Get-EventLog -LogName Application -Source SPEI-FIM -Newest 10
+
+Manual Scan Test
+----------------
+Run:
+
+  Measure-Command {
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Program Files\SPEI-FIM\SPEI-FIM.ps1" -Mode Scan | Out-Null
+  }
+
+Expected result:
+- Scan completes without fim.scan_failed.
+- Runtime is acceptable for the pilot workstation.
+- JSONL log file is created for the current day.
+
+Inspect events:
+
+  Get-Content "C:\ProgramData\SPEI-FIM\Logs\fim-$(Get-Date -Format yyyy-MM-dd).jsonl" -Tail 20 |
+    ConvertFrom-Json |
+    Select-Object event_time,event_id,event_type,severity,path
+
+Controlled Change Detection Test
+--------------------------------
+Create a harmless file under the monitored SPEI-FIM program directory:
+
+  Set-Content "C:\Program Files\SPEI-FIM\fim-validation-test.txt" "validation $(Get-Date)"
+
+Run a scan:
+
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Program Files\SPEI-FIM\SPEI-FIM.ps1" -Mode Scan
+
+Expected result:
+- JSONL log contains event_type fim.file_added.
+- Event ID should be 9103.
+
+Check:
+
+  Select-String -Path "C:\ProgramData\SPEI-FIM\Logs\fim-$(Get-Date -Format yyyy-MM-dd).jsonl" -Pattern "fim.file_added"
+
+Cleanup:
+
+  Remove-Item "C:\Program Files\SPEI-FIM\fim-validation-test.txt" -Force
+
+Filebeat / EFK Test
+-------------------
+Confirm Filebeat harvests:
+
+  C:\ProgramData\SPEI-FIM\Logs\fim-*.jsonl
+
+Filebeat must use NDJSON parsing. Do not configure this input as syslog.
+
+Run from the Filebeat installation directory:
+
+  .\filebeat.exe test config
+  .\filebeat.exe test output
+  Restart-Service filebeat
+
+Generate a test event:
+
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Program Files\SPEI-FIM\SPEI-FIM.ps1" -Mode SendTestAlert
+
+Expected EFK result:
+- Event arrives within the normal Filebeat shipping window.
+- Search examples:
+
+  log_source : "spei-fim" and asset_id : "<assetId>"
+  event_type : "fim.test_alert"
+  event_type : "fim.file_added"
+
+Performance Checks
+------------------
+Run during or immediately after a manual scan:
+
+  Get-Process powershell,filebeat -ErrorAction SilentlyContinue |
+    Select-Object ProcessName,Id,CPU,WorkingSet64
+
+  Get-ChildItem "C:\ProgramData\SPEI-FIM\Logs\*.jsonl" |
+    Select-Object Name,@{n="MB";e={[math]::Round($_.Length/1MB,2)}}
+
+  Get-WinEvent -FilterHashtable @{
+    LogName='Security'
+    Id=4663,4670,4660
+    StartTime=(Get-Date).AddMinutes(-30)
+  } | Measure-Object
+
+Pilot Acceptance Criteria
+-------------------------
+- Installer completes without unhandled error.
+- Scheduled task exists and is configured for 12-hour scans.
+- Manual scan completes successfully.
+- No fim.scan_failed events.
+- No fim.scan_limit_hit events under the default core scope.
+- Controlled file addition produces fim.file_added.
+- JSONL events are valid JSON and parse with ConvertFrom-Json.
+- Filebeat forwards fim.test_alert to EFK.
+- EFK stores events in the approved index with at least 180 days retention.
+- EFK alert rules notify designated personnel for critical/high findings.
+- No business application crash or noticeable endpoint performance degradation during the scan.
+
+Evidence to Save
+----------------
+- Screenshot or text output of scheduled task query.
+- Last 20 SPEI-FIM Application Event Log records.
+- Local JSONL sample containing fim.scan_completed.
+- Local JSONL sample containing fim.file_added.
+- EFK screenshot or exported event for fim.test_alert.
+- Scan runtime from Measure-Command.
+- Filebeat test config and test output results.
+
+Rollback
+--------
+If the pilot fails, disable the scheduled task first:
+
+  schtasks /Change /TN "\SPEI-FIM\SPEI-FIM-Scan" /DISABLE
+
+Then preserve logs for review:
+
+  C:\ProgramData\SPEI-FIM\Logs
+  C:\ProgramData\SPEI-FIM\Baseline
+  C:\ProgramData\SPEI-FIM\Config

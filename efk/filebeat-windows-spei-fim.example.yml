@@ -1,0 +1,55 @@
+# Filebeat input for SPEI-FIM JSONL logs on Windows endpoints.
+#
+# Copy the input section into the locally approved Filebeat configuration.
+# SPEI-FIM writes one compact JSON object per line.
+# This example uses Filebeat 8.x filestream syntax.
+# This is JSONL/NDJSON, not syslog. Do not use syslog parsing for this input.
+
+filebeat.inputs:
+  - type: filestream
+    id: spei-fim-jsonl
+    enabled: true
+    paths:
+      - 'C:\ProgramData\SPEI-FIM\Logs\fim-*.jsonl'
+    parsers:
+      - ndjson:
+          target: ""
+          add_error_key: true
+          overwrite_keys: true
+    fields_under_root: true
+    fields:
+      log_source: spei-fim
+      compliance_domain: spei
+
+# Choose the output that matches the existing EFK design.
+# Option A: Filebeat -> Logstash on Linux
+# output.logstash:
+#   hosts: ["logstash.internal:5044"]
+#   ssl.enabled: true
+#   ssl.certificate_authorities: ["C:\Program Files\Filebeat\certs\ca.crt"]
+
+# Option B: Filebeat -> Elasticsearch on Linux
+# output.elasticsearch:
+#   hosts: ["https://elasticsearch.internal:9200"]
+#   index: "spei-fim-alerts-%{+yyyy.MM.dd}"
+#   ssl.certificate_authorities: ["C:\Program Files\Filebeat\certs\ca.crt"]
+
+# When writing directly to Elasticsearch with a custom index, also set:
+# setup.ilm.enabled: false
+# setup.template.name: "spei-fim-alerts"
+# setup.template.pattern: "spei-fim-alerts-*"
+
+# Legacy Filebeat 7.x style, if filestream/ndjson parsers are unavailable:
+#
+# filebeat.inputs:
+#   - type: log
+#     enabled: true
+#     paths:
+#       - 'C:\ProgramData\SPEI-FIM\Logs\fim-*.jsonl'
+#     json.keys_under_root: true
+#     json.add_error_key: true
+#     json.overwrite_keys: true
+#     fields_under_root: true
+#     fields:
+#       log_source: spei-fim
+#       compliance_domain: spei

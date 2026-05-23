@@ -1,0 +1,26 @@
+{
+  "assetId": "SPEI-WKS-CHANGE-ME",
+  "environment": "production",
+  "scanIntervalHours": 12,
+  "logRetentionDaysLocal": 30,
+  "auditCorrelationLookbackMinutes": 900,
+  "executionPolicyForTask": "Bypass",
+  "initialChangeTicket": "CHG-CHANGE-ME",
+  "criticalFilesRegisterPath": "",
+  "clearPlaintextTokenAfterInstall": true,
+  "auditPolicy": {
+    "enableFileSystem": true,
+    "enableHandleManipulation": false,
+    "enableProcessCreation": false
+  },
+  "efk": {
+    "enabled": true,
+    "mode": "filebeat",
+    "filebeatServiceName": "filebeat",
+    "filebeatReadPrincipal": "",
+    "endpoint": "",
+    "authTokenPlainText": "",
+    "timeoutSeconds": 15,
+    "tlsSkipCertificateCheck": false
+  }
+}

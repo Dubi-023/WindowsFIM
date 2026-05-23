@@ -1,0 +1,65 @@
+{
+  "version": "1.0-db-placeholders",
+  "documentId": "SPEI-FIM-CFR-DB-PLACEHOLDERS",
+  "scope": "database-manager-placeholders",
+  "notes": "Do not deploy this file directly. Copy only the product-specific entries that match the endpoint database manager, narrow paths to the actual instance, and avoid database data/log/backup directories.",
+  "items": [
+    {
+      "id": "DB-POSTGRES-CONF-001",
+      "enabled": false,
+      "path": "C:\\Program Files\\PostgreSQL\\16\\data\\postgresql.conf",
+      "type": "file",
+      "category": "database_manager",
+      "recursive": false,
+      "maxDepth": 0,
+      "maxFilesPerItem": 1,
+      "maxFileSizeMB": 10,
+      "excludePatterns": [],
+      "hash": true,
+      "acl": true,
+      "auditCorrelation": true,
+      "severity": "high",
+      "rationale": "PostgreSQL server configuration. Enable only when PostgreSQL is installed and path is verified."
+    },
+    {
+      "id": "DB-POSTGRES-HBA-001",
+      "enabled": false,
+      "path": "C:\\Program Files\\PostgreSQL\\16\\data\\pg_hba.conf",
+      "type": "file",
+      "category": "database_manager",
+      "recursive": false,
+      "maxDepth": 0,
+      "maxFilesPerItem": 1,
+      "maxFileSizeMB": 10,
+      "excludePatterns": [],
+      "hash": true,
+      "acl": true,
+      "auditCorrelation": true,
+      "severity": "high",
+      "rationale": "PostgreSQL host-based authentication configuration."
+    },
+    {
+      "id": "DB-MSSQL-BINN-001",
+      "enabled": false,
+      "path": "C:\\Program Files\\Microsoft SQL Server\\MSSQL16.MSSQLSERVER\\MSSQL\\Binn",
+      "type": "directory",
+      "category": "database_manager",
+      "recursive": true,
+      "maxDepth": 3,
+      "maxFilesPerItem": 1500,
+      "maxFileSizeMB": 100,
+      "excludePatterns": [
+        "*.mdf",
+        "*.ldf",
+        "*\\DATA\\*",
+        "*\\Log\\*",
+        "*\\Backup\\*"
+      ],
+      "hash": true,
+      "acl": true,
+      "auditCorrelation": true,
+      "severity": "high",
+      "rationale": "SQL Server binaries. Narrow to the actual instance before enabling."
+    }
+  ]
+}

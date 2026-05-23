@@ -1,0 +1,30 @@
+{
+  "index_patterns": ["spei-fim-alerts-*", "spei-fim-health-*", "spei-fim-audit-*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 1
+    },
+    "mappings": {
+      "dynamic": true,
+      "properties": {
+        "event_id": { "type": "integer" },
+        "event_type": { "type": "keyword" },
+        "event_time": { "type": "date" },
+        "hostname": { "type": "keyword" },
+        "asset_id": { "type": "keyword" },
+        "environment": { "type": "keyword" },
+        "source": { "type": "keyword" },
+        "severity": { "type": "keyword" },
+        "path": { "type": "keyword" },
+        "change_type": { "type": "keyword" },
+        "category": { "type": "keyword" },
+        "authorization_status": { "type": "keyword" },
+        "change_ticket": { "type": "keyword" },
+        "audit_correlation.user": { "type": "keyword" },
+        "audit_correlation.process_name": { "type": "keyword" },
+        "audit_correlation.windows_event_id": { "type": "integer" }
+      }
+    }
+  }
+}
