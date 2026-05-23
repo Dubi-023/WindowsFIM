@@ -778,7 +778,7 @@ function Invoke-CreateBaseline {
     try {
         $settings = Read-JsonFile -Path $SettingsPath
         $register = Read-JsonFile -Path $RegisterPath
-        $entries = Get-FimInventory -Register $register
+        $entries = @(Get-FimInventory -Register $register)
         $baseline = Save-Baseline -Settings $settings -Register $register -Entries $entries -Ticket $Ticket
         $event = New-FimEvent -Settings $settings -EventId 9200 -EventType "fim.baseline_created" -Severity "medium" -Data @{
             baseline_id = $baseline.baselineId
@@ -866,8 +866,8 @@ function Invoke-Scan {
     try {
         Test-BaselineIntegrity
         $baseline = Read-JsonFile -Path $BaselinePath
-        $current = Get-FimInventory -Register $register
-        $findings = Compare-FimInventory -BaselineEntries @($baseline.entries) -CurrentEntries $current
+        $current = @(Get-FimInventory -Register $register)
+        $findings = @(Compare-FimInventory -BaselineEntries @($baseline.entries) -CurrentEntries $current)
         $correlationIndex = New-AuditCorrelationIndex -LookbackMinutes ([int]$settings.auditCorrelationLookbackMinutes)
 
         foreach ($finding in $findings) {
