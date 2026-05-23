@@ -326,8 +326,22 @@ Ensure-Directory $evidenceRoot
 Ensure-Directory $efkRoot
 
 Copy-Item -LiteralPath (Join-Path $ScriptRoot "src\SPEI-FIM.ps1") -Destination (Join-Path $programFilesRoot "SPEI-FIM.ps1") -Force
-Copy-Item -LiteralPath (Join-Path $ScriptRoot "src\modules") -Destination $programFilesRoot -Recurse -Force
-Copy-Item -LiteralPath (Join-Path $ScriptRoot "efk\*") -Destination $efkRoot -Force
+
+$modulesSource = Join-Path $ScriptRoot "src\modules"
+$modulesDestination = Join-Path $programFilesRoot "modules"
+Ensure-Directory $modulesDestination
+if (Test-Path -LiteralPath $modulesSource) {
+    foreach ($item in (Get-ChildItem -LiteralPath $modulesSource -Force -ErrorAction SilentlyContinue)) {
+        Copy-Item -LiteralPath $item.FullName -Destination $modulesDestination -Recurse -Force
+    }
+}
+
+$efkSource = Join-Path $ScriptRoot "efk"
+if (Test-Path -LiteralPath $efkSource) {
+    foreach ($item in (Get-ChildItem -LiteralPath $efkSource -Force -ErrorAction SilentlyContinue)) {
+        Copy-Item -LiteralPath $item.FullName -Destination $efkRoot -Recurse -Force
+    }
+}
 
 New-SettingsFile -Deployment $deployment -SettingsPath $settingsPath -TokenFile $tokenFile
 $efkMode = "filebeat"
