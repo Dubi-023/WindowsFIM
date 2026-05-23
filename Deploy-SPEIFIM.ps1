@@ -298,6 +298,20 @@ function Test-FilebeatService {
     Write-Host "Filebeat service detected: $ServiceName ($($service.Status))"
 }
 
+function Invoke-CheckedPowerShell {
+    param(
+        [string]$ExecutionPolicyForTask,
+        [string]$ScriptPath,
+        [string[]]$ScriptArguments,
+        [string]$Description
+    )
+
+    & powershell.exe -NoProfile -ExecutionPolicy $ExecutionPolicyForTask -File $ScriptPath @ScriptArguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "$Description failed with exit code $LASTEXITCODE."
+    }
+}
+
 $ScriptRoot = Get-ScriptRoot
 if ([string]::IsNullOrWhiteSpace($DeploymentConfig)) {
     $DeploymentConfig = Join-Path $ScriptRoot "config\deployment.local.json"
@@ -422,11 +436,11 @@ $filebeatPrincipal = Resolve-FilebeatReadPrincipal -Deployment $deployment
 Grant-FilebeatReadAccess -ProgramDataRoot $programDataRoot -LogsRoot $logsRoot -Principal $filebeatPrincipal
 
 if (-not $SkipBaseline) {
-    & powershell.exe -NoProfile -ExecutionPolicy $executionPolicyForTask -File $installedScript -Mode CreateBaseline -ChangeTicket ([string]$deployment.initialChangeTicket)
+    Invoke-CheckedPowerShell -ExecutionPolicyForTask $executionPolicyForTask -ScriptPath $installedScript -ScriptArguments @("-Mode", "CreateBaseline", "-ChangeTicket", ([string]$deployment.initialChangeTicket)) -Description "CreateBaseline"
 }
 
 if (-not $SkipConnectivityTest) {
-    & powershell.exe -NoProfile -ExecutionPolicy $executionPolicyForTask -File $installedScript -Mode SendTestAlert
+    Invoke-CheckedPowerShell -ExecutionPolicyForTask $executionPolicyForTask -ScriptPath $installedScript -ScriptArguments @("-Mode", "SendTestAlert") -Description "SendTestAlert"
     if ($efkMode -eq "filebeat") {
         Test-FilebeatService -ServiceName ([string]$deployment.efk.filebeatServiceName)
     }

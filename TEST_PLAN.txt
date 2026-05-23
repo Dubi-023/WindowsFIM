@@ -58,13 +58,23 @@ Expected result:
 - No unhandled PowerShell errors.
 - C:\Program Files\SPEI-FIM\SPEI-FIM.ps1 exists.
 - C:\ProgramData\SPEI-FIM\Config\critical-files-register.json exists.
+- C:\ProgramData\SPEI-FIM\Baseline\baseline-current.json exists.
 - Scheduled task \SPEI-FIM\SPEI-FIM-Scan exists.
 - Application Event Log contains SPEI-FIM events.
+
+One-click verification:
+
+  .\VERIFY-AS-ADMIN.bat
+
+Expected result:
+- The script prints no FAIL items.
+- Summary shows 0 failure(s).
 
 Verification commands:
 
   Test-Path "C:\Program Files\SPEI-FIM\SPEI-FIM.ps1"
   Test-Path "C:\ProgramData\SPEI-FIM\Config\critical-files-register.json"
+  Test-Path "C:\ProgramData\SPEI-FIM\Baseline\baseline-current.json"
   schtasks /Query /TN "\SPEI-FIM\SPEI-FIM-Scan" /V /FO LIST
   Get-EventLog -LogName Application -Source SPEI-FIM -Newest 10
 

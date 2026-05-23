@@ -57,6 +57,16 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Program Files\SPEI-F
 
 In the default `filebeat` mode, `SendTestAlert` writes a local JSONL test event. Filebeat is responsible for forwarding it to EFK.
 
+## One-click local verification
+
+After installation, run:
+
+```bat
+VERIFY-AS-ADMIN.bat
+```
+
+The verification helper checks the installed scanner, configuration, baseline file and hash, scheduled task, manual scan, test alert, and JSONL log parsing. Any `FAIL` result means the workstation should not be treated as successfully installed.
+
 ## Filebeat input
 
 Use this template on the Windows endpoint or in your managed Filebeat policy:

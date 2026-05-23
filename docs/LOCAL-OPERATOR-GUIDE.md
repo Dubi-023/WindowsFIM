@@ -7,6 +7,7 @@ This package is designed for local operators who only need to run one installer.
 1. Extract the package to a local folder.
 2. Edit `config\deployment.local.json`.
 3. Double-click `INSTALL-AS-ADMIN.bat`.
+4. Double-click `VERIFY-AS-ADMIN.bat`.
 
 If the batch wrapper is blocked, right-click Windows PowerShell, select `Run as administrator`, and run:
 
@@ -24,6 +25,8 @@ The installer creates:
 - `C:\ProgramData\SPEI-FIM\EFK` with the Filebeat input example
 - Scheduled task: `\SPEI-FIM\SPEI-FIM-Scan`
 - Windows Event Log source: `SPEI-FIM`
+
+The verification script must show `Summary: 0 failure(s)`. If any line shows `FAIL`, the workstation is not considered successfully installed.
 
 ## Minimum fields to change
 
