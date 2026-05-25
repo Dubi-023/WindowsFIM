@@ -159,6 +159,22 @@ if ((Test-Path -LiteralPath $baselinePath -PathType Leaf) -and (Test-Path -Liter
 try {
     $task = Get-ScheduledTask -TaskPath "\SPEI-FIM\" -TaskName "SPEI-FIM-Scan" -ErrorAction Stop
     Write-Check -Status "PASS" -Name "Scheduled task" -Details ("\SPEI-FIM\SPEI-FIM-Scan state=" + $task.State)
+
+    $triggerTypes = @($task.Triggers | ForEach-Object { $_.CimClass.CimClassName })
+    $hasPeriodicTrigger = $triggerTypes -contains "MSFT_TaskTimeTrigger"
+    $hasStartupTrigger = $triggerTypes -contains "MSFT_TaskBootTrigger"
+    $hasLogonTrigger = $triggerTypes -contains "MSFT_TaskLogonTrigger"
+    if ($hasPeriodicTrigger -and $hasStartupTrigger -and $hasLogonTrigger) {
+        Write-Check -Status "PASS" -Name "Scheduled task triggers" -Details "Periodic, startup, and logon triggers are configured"
+    } else {
+        Write-Check -Status "FAIL" -Name "Scheduled task triggers" -Details ("Missing trigger. Found: " + ($triggerTypes -join ", "))
+    }
+
+    if ($task.Settings.StartWhenAvailable) {
+        Write-Check -Status "PASS" -Name "Missed scan recovery" -Details "StartWhenAvailable is enabled"
+    } else {
+        Write-Check -Status "FAIL" -Name "Missed scan recovery" -Details "StartWhenAvailable is not enabled"
+    }
 } catch {
     Write-Check -Status "FAIL" -Name "Scheduled task" -Details "Missing \SPEI-FIM\SPEI-FIM-Scan"
 }

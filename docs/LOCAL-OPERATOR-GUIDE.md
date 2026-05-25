@@ -26,6 +26,8 @@ The installer creates:
 - Scheduled task: `\SPEI-FIM\SPEI-FIM-Scan`
 - Windows Event Log source: `SPEI-FIM`
 
+The scheduled task runs every 12 hours while the workstation is available. It also runs at startup and user logon, with missed-scan recovery enabled, so a workstation that was powered off overnight performs a catch-up scan when it is next used.
+
 The verification script must show `Summary: 0 failure(s)`. If any line shows `FAIL`, the workstation is not considered successfully installed.
 
 ## Minimum fields to change

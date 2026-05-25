@@ -65,7 +65,7 @@ After installation, run:
 VERIFY-AS-ADMIN.bat
 ```
 
-The verification helper checks the installed scanner, configuration, baseline file and hash, scheduled task, manual scan, test alert, and JSONL log parsing. Any `FAIL` result means the workstation should not be treated as successfully installed.
+The verification helper checks the installed scanner, configuration, baseline file and hash, scheduled task triggers, missed-scan recovery, manual scan, test alert, and JSONL log parsing. Any `FAIL` result means the workstation should not be treated as successfully installed.
 
 ## Filebeat input
 
@@ -136,7 +136,7 @@ The scanner is non-blocking and read-only. It includes these controls to reduce 
 ## Compliance mapping
 
 - Formal FIM procedure: documented separately, this package enforces the technical mechanism.
-- Monitoring at least every 24 hours: default scheduled scan is every 12 hours.
+- Monitoring at least every 24 hours: default scheduled scan is every 12 hours while the workstation is available. The scheduled task also runs at startup and user logon, and `StartWhenAvailable` is enabled so a workstation that was powered off runs a catch-up scan when it is next available.
 - OS and DB manager critical paths: configured in `critical-files-register.json`.
 - Alerting: events are written locally and forwarded to EFK.
 - Log protection and retention: local logs are ACL protected and retained locally for at least 180 days by default; central retention must also be enforced on EFK for at least 180 days.

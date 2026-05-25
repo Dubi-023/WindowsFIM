@@ -60,6 +60,8 @@ Expected result:
 - C:\ProgramData\SPEI-FIM\Config\critical-files-register.json exists.
 - C:\ProgramData\SPEI-FIM\Baseline\baseline-current.json exists.
 - Scheduled task \SPEI-FIM\SPEI-FIM-Scan exists.
+- Scheduled task has periodic, startup, and logon triggers.
+- Scheduled task has missed-scan recovery enabled.
 - Application Event Log contains SPEI-FIM events.
 
 One-click verification:
@@ -185,7 +187,7 @@ Run during or immediately after a manual scan:
 Pilot Acceptance Criteria
 -------------------------
 - Installer completes without unhandled error.
-- Scheduled task exists and is configured for 12-hour scans.
+- Scheduled task exists and is configured for 12-hour scans, startup scans, logon scans, and missed-scan recovery.
 - Manual scan completes successfully.
 - No fim.scan_failed events.
 - No fim.scan_limit_hit events under the default core scope.
