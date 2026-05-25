@@ -160,6 +160,18 @@ function Initialize-DefaultDeploymentConfig {
     ($json | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath $TargetPath -Encoding UTF8
 }
 
+function Resolve-AssetId {
+    param([string]$AssetId)
+
+    if ([string]::IsNullOrWhiteSpace($AssetId)) {
+        return $env:COMPUTERNAME
+    }
+    if ($AssetId -eq "AUTO" -or $AssetId -eq "AUTO-COMPUTERNAME") {
+        return $env:COMPUTERNAME
+    }
+    return $AssetId
+}
+
 function New-SettingsFile {
     param(
         [object]$Deployment,
@@ -220,7 +232,7 @@ function New-SettingsFile {
         toolName = "SPEI-FIM"
         eventSource = "SPEI-FIM"
         eventLogName = "Application"
-        assetId = $Deployment.assetId
+        assetId = (Resolve-AssetId -AssetId ([string]$Deployment.assetId))
         environment = $Deployment.environment
         scanIntervalHours = [int]$Deployment.scanIntervalHours
         programDataRoot = "C:\ProgramData\SPEI-FIM"

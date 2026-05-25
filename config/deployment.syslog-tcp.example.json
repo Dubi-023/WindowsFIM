@@ -1,5 +1,5 @@
 {
-  "assetId": "SPEI-WKS-CHANGE-ME",
+  "assetId": "AUTO-COMPUTERNAME",
   "environment": "production",
   "scanIntervalHours": 12,
   "logRetentionDaysLocal": 180,
