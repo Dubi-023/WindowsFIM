@@ -631,7 +631,7 @@ function Send-FimEventToSyslog {
     if ($Settings.efk.PSObject.Properties.Name -contains "syslogPort") {
         $port = [int]$Settings.efk.syslogPort
     }
-    $protocol = "tcp"
+    $protocol = "udp"
     if ($Settings.efk.PSObject.Properties.Name -contains "syslogProtocol") {
         $protocol = ([string]$Settings.efk.syslogProtocol).ToLowerInvariant()
     }

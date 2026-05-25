@@ -150,9 +150,9 @@ If the EFK owner provides an rsyslog/syslog collector instead of a Filebeat Beat
   efk.mode = syslog
   efk.syslogHost = <EFK_SYSLOG_IP>
   efk.syslogPort = 5140
-  efk.syslogProtocol = tcp
+  efk.syslogProtocol = udp
 
-Alternatively, copy config\deployment.syslog-tcp.example.json to config\deployment.local.json and replace EFK_SYSLOG_IP_CHANGE_ME.
+Alternatively, copy config\deployment.syslog-udp.example.json to config\deployment.local.json and replace EFK_SYSLOG_IP_CHANGE_ME.
 
 Generate a test event:
 

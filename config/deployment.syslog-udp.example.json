@@ -22,7 +22,7 @@
     "endpoint": "",
     "syslogHost": "EFK_SYSLOG_IP_CHANGE_ME",
     "syslogPort": 5140,
-    "syslogProtocol": "tcp",
+    "syslogProtocol": "udp",
     "syslogFacility": "local0",
     "syslogAppName": "SPEI-FIM",
     "syslogFraming": "newline",

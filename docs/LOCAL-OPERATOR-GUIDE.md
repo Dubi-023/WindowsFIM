@@ -57,12 +57,12 @@ If the EFK team provides a central rsyslog/syslog collector, set this before dep
 "mode": "syslog",
 "syslogHost": "<EFK_SYSLOG_IP>",
 "syslogPort": 5140,
-"syslogProtocol": "tcp"
+"syslogProtocol": "udp"
 ```
 
 In syslog mode, SPEI-FIM still writes the local JSONL file and also sends RFC5424 syslog messages with the JSON event body.
 
-For TCP syslog deployment, local operators can copy `config\deployment.syslog-tcp.example.json` to `config\deployment.local.json` and replace `EFK_SYSLOG_IP_CHANGE_ME`.
+For UDP syslog deployment, local operators can copy `config\deployment.syslog-udp.example.json` to `config\deployment.local.json` and replace `EFK_SYSLOG_IP_CHANGE_ME`.
 
 If Filebeat runs under a custom service account, set this before deployment:
 
