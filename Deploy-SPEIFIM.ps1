@@ -187,7 +187,7 @@ function New-SettingsFile {
     if (($Deployment.efk.PSObject.Properties.Name -contains "syslogPort") -and $Deployment.efk.syslogPort) {
         $syslogPort = [int]$Deployment.efk.syslogPort
     }
-    $syslogProtocol = "udp"
+    $syslogProtocol = "tcp"
     if (($Deployment.efk.PSObject.Properties.Name -contains "syslogProtocol") -and $Deployment.efk.syslogProtocol) {
         $syslogProtocol = [string]$Deployment.efk.syslogProtocol
     }

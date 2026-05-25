@@ -99,14 +99,14 @@ For a central rsyslog/syslog collector, set `efk.mode` to `syslog` in `config\de
   "mode": "syslog",
   "syslogHost": "<EFK_SYSLOG_IP>",
   "syslogPort": 5140,
-  "syslogProtocol": "udp",
+  "syslogProtocol": "tcp",
   "syslogFacility": "local0",
   "syslogAppName": "SPEI-FIM",
   "syslogFraming": "newline"
 }
 ```
 
-Confirm `syslogProtocol` with the EFK owner. Use `tcp` only if the receiver is configured for TCP syslog; use `udp` for standard rsyslog UDP collection.
+For the current EFK collector, use TCP syslog on port `5140`. The repo also includes `config\deployment.syslog-tcp.example.json` as a ready template; copy it to `config\deployment.local.json` and replace `EFK_SYSLOG_IP_CHANGE_ME`.
 
 ## Default scope
 

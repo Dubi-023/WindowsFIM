@@ -16,11 +16,11 @@
   },
   "efk": {
     "enabled": true,
-    "mode": "filebeat",
+    "mode": "syslog",
     "filebeatServiceName": "filebeat",
     "filebeatReadPrincipal": "",
     "endpoint": "",
-    "syslogHost": "",
+    "syslogHost": "EFK_SYSLOG_IP_CHANGE_ME",
     "syslogPort": 5140,
     "syslogProtocol": "tcp",
     "syslogFacility": "local0",
