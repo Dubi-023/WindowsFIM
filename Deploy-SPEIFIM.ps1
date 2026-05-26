@@ -97,8 +97,8 @@ function Repair-ProtectedPathAccess {
     param([Parameter(Mandatory = $true)][string]$Path)
 
     try {
-        Invoke-Icacls -Path $Path -Arguments @("/grant:r", "*S-1-5-18:(OI)(CI)(F)")
-        Invoke-Icacls -Path $Path -Arguments @("/grant:r", "*S-1-5-32-544:(OI)(CI)(F)")
+        Invoke-Icacls -Path $Path -Arguments @("/setowner", "*S-1-5-32-544", "/T", "/C")
+        Invoke-Icacls -Path $Path -Arguments @("/grant:r", "*S-1-5-18:(OI)(CI)(F)", "*S-1-5-32-544:(OI)(CI)(F)", "/T", "/C")
     } catch {
         Write-Warning "ACL repair failed for $Path before install copy: $($_.Exception.Message)"
     }
@@ -449,26 +449,31 @@ $registerPath = Join-Path $configRoot "critical-files-register.json"
 
 Register-FimEventSource -Source "SPEI-FIM"
 
+$managedDirectories = @(
+    $programFilesRoot,
+    $programDataRoot,
+    $configRoot,
+    $baselineRoot,
+    $logsRoot,
+    $queueRoot,
+    $evidenceRoot,
+    $efkRoot
+)
+
 Ensure-Directory $programFilesRoot
 Ensure-Directory $programDataRoot
-Ensure-Directory $configRoot
-Ensure-Directory $baselineRoot
-Ensure-Directory $logsRoot
-Ensure-Directory $queueRoot
-Ensure-Directory $evidenceRoot
-Ensure-Directory $efkRoot
 
-Repair-ProtectedPathAccess -Path $programFilesRoot
-Repair-ProtectedPathAccess -Path $programDataRoot
+foreach ($directory in $managedDirectories) {
+    Repair-ProtectedPathAccess -Path $directory
+}
 
-Ensure-Directory $programFilesRoot
-Ensure-Directory $programDataRoot
-Ensure-Directory $configRoot
-Ensure-Directory $baselineRoot
-Ensure-Directory $logsRoot
-Ensure-Directory $queueRoot
-Ensure-Directory $evidenceRoot
-Ensure-Directory $efkRoot
+foreach ($directory in $managedDirectories) {
+    Ensure-Directory $directory
+}
+
+foreach ($directory in $managedDirectories) {
+    Repair-ProtectedPathAccess -Path $directory
+}
 
 Copy-Item -LiteralPath (Join-Path $ScriptRoot "src\SPEI-FIM.ps1") -Destination (Join-Path $programFilesRoot "SPEI-FIM.ps1") -Force
 

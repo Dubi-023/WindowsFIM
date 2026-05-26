@@ -69,6 +69,8 @@ The verification helper checks the installed scanner, configuration, baseline fi
 
 Folder protection uses language-independent Windows SIDs for `SYSTEM`, `Administrators`, and `Users`, so the package works on non-English Windows builds. Re-running the latest installer repairs ACLs left by an older package before copying files.
 
+If an older failed install left `C:\Program Files\SPEI-FIM` or `C:\ProgramData\SPEI-FIM` inaccessible, run `REPAIR-ACL-AS-ADMIN.bat` once, then run `INSTALL-AS-ADMIN.bat` again.
+
 ## Filebeat input
 
 Use this template on the Windows endpoint or in your managed Filebeat policy:

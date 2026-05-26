@@ -49,6 +49,8 @@ $items = @(
     "INSTALL-AS-ADMIN.bat",
     "Verify-SPEIFIM.ps1",
     "VERIFY-AS-ADMIN.bat",
+    "Repair-SPEIFIM-ACL.ps1",
+    "REPAIR-ACL-AS-ADMIN.bat",
     "Uninstall-SPEIFIM.ps1",
     "UNINSTALL-AS-ADMIN.bat",
     "README.md",

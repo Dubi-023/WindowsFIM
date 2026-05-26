@@ -72,6 +72,12 @@ Expected result:
 - The script prints no FAIL items.
 - Summary shows 0 failure(s).
 
+If a previous failed install left SPEI-FIM folders inaccessible:
+
+  .\REPAIR-ACL-AS-ADMIN.bat
+  .\INSTALL-AS-ADMIN.bat
+  .\VERIFY-AS-ADMIN.bat
+
 Verification commands:
 
   Test-Path "C:\Program Files\SPEI-FIM\SPEI-FIM.ps1"

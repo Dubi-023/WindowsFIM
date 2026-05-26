@@ -56,8 +56,8 @@ function Repair-ProtectedPathAccess {
     param([string]$Path)
 
     try {
-        Invoke-Icacls -Path $Path -Arguments @("/grant:r", "*S-1-5-18:(OI)(CI)(F)")
-        Invoke-Icacls -Path $Path -Arguments @("/grant:r", "*S-1-5-32-544:(OI)(CI)(F)")
+        Invoke-Icacls -Path $Path -Arguments @("/setowner", "*S-1-5-32-544", "/T", "/C")
+        Invoke-Icacls -Path $Path -Arguments @("/grant:r", "*S-1-5-18:(OI)(CI)(F)", "*S-1-5-32-544:(OI)(CI)(F)", "/T", "/C")
     } catch {
         Write-UninstallMessage "WARNING: Failed to repair ACL on $Path : $($_.Exception.Message)"
     }

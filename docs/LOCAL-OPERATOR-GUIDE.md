@@ -32,6 +32,8 @@ The verification script must show `Summary: 0 failure(s)`. If any line shows `FA
 
 On non-English Windows builds, SPEI-FIM uses well-known Windows SIDs instead of localized group names when protecting folders. If an older package left `C:\Program Files\SPEI-FIM` inaccessible, re-running `INSTALL-AS-ADMIN.bat` from the latest package repairs the ACL before reinstalling.
 
+If validation still shows `Access denied` for `C:\Program Files\SPEI-FIM` or `C:\ProgramData\SPEI-FIM`, run `REPAIR-ACL-AS-ADMIN.bat` once and then re-run `INSTALL-AS-ADMIN.bat`.
+
 ## Minimum fields to change
 
 In `config\deployment.local.json`:
