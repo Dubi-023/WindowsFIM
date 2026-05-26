@@ -45,8 +45,36 @@ function Read-JsonFile {
 
 function Ensure-Directory {
     param([Parameter(Mandatory = $true)][string]$Path)
-    if (-not (Test-Path -LiteralPath $Path)) {
-        New-Item -Path $Path -ItemType Directory -Force | Out-Null
+    try {
+        if (Test-Path -LiteralPath $Path -ErrorAction Stop) { return }
+    } catch {
+        Write-Warning "Cannot query directory before ACL repair: $Path. $($_.Exception.Message)"
+        return
+    }
+    New-Item -Path $Path -ItemType Directory -Force | Out-Null
+}
+
+function Invoke-Icacls {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string[]]$Arguments
+    )
+
+    & icacls.exe $Path @Arguments | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "icacls.exe failed for $Path with exit code $LASTEXITCODE. Arguments: $($Arguments -join ' ')"
+    }
+}
+
+function Resolve-IcaclsPrincipal {
+    param([string]$Principal)
+
+    if ([string]::IsNullOrWhiteSpace($Principal)) { return "" }
+    switch -Regex ($Principal) {
+        "^(LocalSystem|SYSTEM|NT AUTHORITY\\SYSTEM)$" { return "*S-1-5-18" }
+        "^Administrators$" { return "*S-1-5-32-544" }
+        "^Users$" { return "*S-1-5-32-545" }
+        default { return $Principal }
     }
 }
 
@@ -57,11 +85,22 @@ function Protect-Path {
     )
     if (-not (Test-Path -LiteralPath $Path)) { return }
 
-    & icacls.exe $Path /inheritance:r | Out-Null
-    & icacls.exe $Path /grant:r "SYSTEM:(OI)(CI)(F)" | Out-Null
-    & icacls.exe $Path /grant:r "Administrators:(OI)(CI)(F)" | Out-Null
+    Invoke-Icacls -Path $Path -Arguments @("/inheritance:r")
+    Invoke-Icacls -Path $Path -Arguments @("/grant:r", "*S-1-5-18:(OI)(CI)(F)")
+    Invoke-Icacls -Path $Path -Arguments @("/grant:r", "*S-1-5-32-544:(OI)(CI)(F)")
     if ($ReadOnlyForAdmins) {
-        & icacls.exe $Path /grant:r "Users:(OI)(CI)(RX)" | Out-Null
+        Invoke-Icacls -Path $Path -Arguments @("/grant:r", "*S-1-5-32-545:(OI)(CI)(RX)")
+    }
+}
+
+function Repair-ProtectedPathAccess {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    try {
+        Invoke-Icacls -Path $Path -Arguments @("/grant:r", "*S-1-5-18:(OI)(CI)(F)")
+        Invoke-Icacls -Path $Path -Arguments @("/grant:r", "*S-1-5-32-544:(OI)(CI)(F)")
+    } catch {
+        Write-Warning "ACL repair failed for $Path before install copy: $($_.Exception.Message)"
     }
 }
 
@@ -73,10 +112,10 @@ function Grant-FilebeatReadAccess {
     )
 
     if ([string]::IsNullOrWhiteSpace($Principal)) { return }
-    if ($Principal -eq "LocalSystem") { $Principal = "SYSTEM" }
+    $resolvedPrincipal = Resolve-IcaclsPrincipal -Principal $Principal
 
-    & icacls.exe $ProgramDataRoot /grant:r "${Principal}:(RX)" | Out-Null
-    & icacls.exe $LogsRoot /grant:r "${Principal}:(OI)(CI)(RX)" | Out-Null
+    Invoke-Icacls -Path $ProgramDataRoot -Arguments @("/grant:r", "${resolvedPrincipal}:(RX)")
+    Invoke-Icacls -Path $LogsRoot -Arguments @("/grant:r", "${resolvedPrincipal}:(OI)(CI)(RX)")
 }
 
 function Resolve-FilebeatReadPrincipal {
@@ -132,9 +171,9 @@ function Convert-PlainTokenToProtectedFile {
     $secure = ConvertTo-SecureString -String $PlainToken -AsPlainText -Force
     $encrypted = $secure | ConvertFrom-SecureString
     Set-Content -LiteralPath $TokenFile -Value $encrypted -Encoding ASCII
-    & icacls.exe $TokenFile /inheritance:r | Out-Null
-    & icacls.exe $TokenFile /grant:r "SYSTEM:(F)" | Out-Null
-    & icacls.exe $TokenFile /grant:r "Administrators:(F)" | Out-Null
+    Invoke-Icacls -Path $TokenFile -Arguments @("/inheritance:r")
+    Invoke-Icacls -Path $TokenFile -Arguments @("/grant:r", "*S-1-5-18:(F)")
+    Invoke-Icacls -Path $TokenFile -Arguments @("/grant:r", "*S-1-5-32-544:(F)")
 }
 
 function Clear-PlainTokenInDeploymentConfig {
@@ -409,6 +448,18 @@ $settingsPath = Join-Path $configRoot "fim-settings.json"
 $registerPath = Join-Path $configRoot "critical-files-register.json"
 
 Register-FimEventSource -Source "SPEI-FIM"
+
+Ensure-Directory $programFilesRoot
+Ensure-Directory $programDataRoot
+Ensure-Directory $configRoot
+Ensure-Directory $baselineRoot
+Ensure-Directory $logsRoot
+Ensure-Directory $queueRoot
+Ensure-Directory $evidenceRoot
+Ensure-Directory $efkRoot
+
+Repair-ProtectedPathAccess -Path $programFilesRoot
+Repair-ProtectedPathAccess -Path $programDataRoot
 
 Ensure-Directory $programFilesRoot
 Ensure-Directory $programDataRoot

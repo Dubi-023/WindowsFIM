@@ -30,6 +30,8 @@ The scheduled task runs every 12 hours while the workstation is available. It al
 
 The verification script must show `Summary: 0 failure(s)`. If any line shows `FAIL`, the workstation is not considered successfully installed.
 
+On non-English Windows builds, SPEI-FIM uses well-known Windows SIDs instead of localized group names when protecting folders. If an older package left `C:\Program Files\SPEI-FIM` inaccessible, re-running `INSTALL-AS-ADMIN.bat` from the latest package repairs the ACL before reinstalling.
+
 ## Minimum fields to change
 
 In `config\deployment.local.json`:

@@ -32,8 +32,34 @@ function Test-IsAdministrator {
 
 function Ensure-Directory {
     param([string]$Path)
-    if (-not (Test-Path -LiteralPath $Path)) {
-        New-Item -Path $Path -ItemType Directory -Force | Out-Null
+    try {
+        if (Test-Path -LiteralPath $Path -ErrorAction Stop) { return }
+    } catch {
+        return
+    }
+    New-Item -Path $Path -ItemType Directory -Force | Out-Null
+}
+
+function Invoke-Icacls {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string[]]$Arguments
+    )
+
+    & icacls.exe $Path @Arguments | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "icacls.exe failed for $Path with exit code $LASTEXITCODE. Arguments: $($Arguments -join ' ')"
+    }
+}
+
+function Repair-ProtectedPathAccess {
+    param([string]$Path)
+
+    try {
+        Invoke-Icacls -Path $Path -Arguments @("/grant:r", "*S-1-5-18:(OI)(CI)(F)")
+        Invoke-Icacls -Path $Path -Arguments @("/grant:r", "*S-1-5-32-544:(OI)(CI)(F)")
+    } catch {
+        Write-UninstallMessage "WARNING: Failed to repair ACL on $Path : $($_.Exception.Message)"
     }
 }
 
@@ -125,7 +151,8 @@ function Remove-FileSystemSacl {
 }
 
 function Remove-FimProgramFiles {
-    if (Test-Path -LiteralPath $ProgramFilesRoot) {
+    Repair-ProtectedPathAccess -Path $ProgramFilesRoot
+    if (Test-Path -LiteralPath $ProgramFilesRoot -ErrorAction SilentlyContinue) {
         Remove-Item -LiteralPath $ProgramFilesRoot -Recurse -Force
         Write-UninstallMessage "Removed program files: $ProgramFilesRoot"
     } else {
@@ -134,7 +161,8 @@ function Remove-FimProgramFiles {
 }
 
 function Remove-FimProgramData {
-    if (Test-Path -LiteralPath $ProgramDataRoot) {
+    Repair-ProtectedPathAccess -Path $ProgramDataRoot
+    if (Test-Path -LiteralPath $ProgramDataRoot -ErrorAction SilentlyContinue) {
         Remove-Item -LiteralPath $ProgramDataRoot -Recurse -Force
         Write-Host "Removed program data: $ProgramDataRoot"
     } else {

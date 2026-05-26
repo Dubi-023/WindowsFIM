@@ -64,14 +64,39 @@ function Invoke-FimMode {
     }
 }
 
+function Test-PathSafe {
+    param(
+        [string]$Path,
+        [string]$PathType = "Any"
+    )
+
+    try {
+        $exists = Test-Path -LiteralPath $Path -PathType $PathType -ErrorAction Stop
+        return [pscustomobject]@{
+            Exists = $exists
+            Error = ""
+        }
+    } catch {
+        return [pscustomobject]@{
+            Exists = $false
+            Error = $_.Exception.Message
+        }
+    }
+}
+
 function Test-JsonLog {
     param(
         [string]$Path,
         [string[]]$ExpectedEventTypes
     )
 
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
-        Write-Check -Status "FAIL" -Name "JSONL log file" -Details "Missing $Path"
+    $logPathCheck = Test-PathSafe -Path $Path -PathType "Leaf"
+    if (-not $logPathCheck.Exists) {
+        if ($logPathCheck.Error) {
+            Write-Check -Status "FAIL" -Name "JSONL log file" -Details "Cannot access $Path. $($logPathCheck.Error)"
+        } else {
+            Write-Check -Status "FAIL" -Name "JSONL log file" -Details "Missing $Path"
+        }
         return
     }
 
@@ -123,10 +148,15 @@ if (Test-IsAdministrator) {
     Write-Check -Status "FAIL" -Name "Administrator PowerShell" -Details "Run VERIFY-AS-ADMIN.bat or start PowerShell as Administrator"
 }
 
-if (Test-Path -LiteralPath $installedScript -PathType Leaf) {
+$installedScriptCheck = Test-PathSafe -Path $installedScript -PathType "Leaf"
+if ($installedScriptCheck.Exists) {
     Write-Check -Status "PASS" -Name "Installed scanner" -Details $installedScript
 } else {
-    Write-Check -Status "FAIL" -Name "Installed scanner" -Details "Missing $installedScript"
+    if ($installedScriptCheck.Error) {
+        Write-Check -Status "FAIL" -Name "Installed scanner" -Details "Cannot access $installedScript. Re-run INSTALL-AS-ADMIN.bat from the latest package to repair ACLs. $($installedScriptCheck.Error)"
+    } else {
+        Write-Check -Status "FAIL" -Name "Installed scanner" -Details "Missing $installedScript"
+    }
 }
 
 foreach ($item in @(
@@ -135,14 +165,21 @@ foreach ($item in @(
     @{ Name = "Baseline file"; Path = $baselinePath },
     @{ Name = "Baseline hash file"; Path = $baselineHashPath }
 )) {
-    if (Test-Path -LiteralPath ([string]$item.Path) -PathType Leaf) {
+    $pathCheck = Test-PathSafe -Path ([string]$item.Path) -PathType "Leaf"
+    if ($pathCheck.Exists) {
         Write-Check -Status "PASS" -Name ([string]$item.Name) -Details ([string]$item.Path)
     } else {
-        Write-Check -Status "FAIL" -Name ([string]$item.Name) -Details ("Missing " + [string]$item.Path)
+        if ($pathCheck.Error) {
+            Write-Check -Status "FAIL" -Name ([string]$item.Name) -Details ("Cannot access " + [string]$item.Path + ". " + $pathCheck.Error)
+        } else {
+            Write-Check -Status "FAIL" -Name ([string]$item.Name) -Details ("Missing " + [string]$item.Path)
+        }
     }
 }
 
-if ((Test-Path -LiteralPath $baselinePath -PathType Leaf) -and (Test-Path -LiteralPath $baselineHashPath -PathType Leaf)) {
+$baselinePathCheck = Test-PathSafe -Path $baselinePath -PathType "Leaf"
+$baselineHashPathCheck = Test-PathSafe -Path $baselineHashPath -PathType "Leaf"
+if ($baselinePathCheck.Exists -and $baselineHashPathCheck.Exists) {
     try {
         $expected = (Get-Content -LiteralPath $baselineHashPath -Raw).Trim().ToLowerInvariant()
         $actual = (Get-FileHash -LiteralPath $baselinePath -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -179,7 +216,7 @@ try {
     Write-Check -Status "FAIL" -Name "Scheduled task" -Details "Missing \SPEI-FIM\SPEI-FIM-Scan"
 }
 
-if (Test-Path -LiteralPath $installedScript -PathType Leaf) {
+if ($installedScriptCheck.Exists) {
     $validate = Invoke-FimMode -ScriptPath $installedScript -Mode "ValidateConfig"
     if ($validate.ExitCode -eq 0) {
         Write-Check -Status "PASS" -Name "ValidateConfig"

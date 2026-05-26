@@ -67,6 +67,8 @@ VERIFY-AS-ADMIN.bat
 
 The verification helper checks the installed scanner, configuration, baseline file and hash, scheduled task triggers, missed-scan recovery, manual scan, test alert, and JSONL log parsing. Any `FAIL` result means the workstation should not be treated as successfully installed.
 
+Folder protection uses language-independent Windows SIDs for `SYSTEM`, `Administrators`, and `Users`, so the package works on non-English Windows builds. Re-running the latest installer repairs ACLs left by an older package before copying files.
+
 ## Filebeat input
 
 Use this template on the Windows endpoint or in your managed Filebeat policy:
