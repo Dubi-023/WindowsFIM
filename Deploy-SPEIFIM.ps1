@@ -13,6 +13,7 @@ param(
     [switch]$SkipBaseline,
     [switch]$SkipAuditPolicy,
     [switch]$SkipSacl,
+    [switch]$FailOnSaclError,
     [switch]$SkipConnectivityTest
 )
 
@@ -337,25 +338,42 @@ function Add-FileSystemSacl {
     $expanded = [Environment]::ExpandEnvironmentVariables($Path)
     if (-not (Test-Path -LiteralPath $expanded)) {
         Write-Warning "SACL target not found, skipping: $expanded"
-        return
+        return [pscustomobject]@{
+            Success = $false
+            Path = $expanded
+            Error = "Target not found"
+        }
     }
 
-    $acl = Get-Acl -LiteralPath $expanded
-    $rights = [System.Security.AccessControl.FileSystemRights]"CreateFiles,CreateDirectories,WriteData,AppendData,WriteExtendedAttributes,WriteAttributes,Delete,DeleteSubdirectoriesAndFiles,ChangePermissions,TakeOwnership"
-    $auditFlags = [System.Security.AccessControl.AuditFlags]"Success,Failure"
+    try {
+        $acl = Get-Acl -LiteralPath $expanded
+        $rights = [System.Security.AccessControl.FileSystemRights]"CreateFiles,CreateDirectories,WriteData,AppendData,WriteExtendedAttributes,WriteAttributes,Delete,DeleteSubdirectoriesAndFiles,ChangePermissions,TakeOwnership"
+        $auditFlags = [System.Security.AccessControl.AuditFlags]"Success,Failure"
 
-    if ((Get-Item -LiteralPath $expanded).PSIsContainer -and $Recursive) {
-        $inherit = [System.Security.AccessControl.InheritanceFlags]"ContainerInherit,ObjectInherit"
-        $propagation = [System.Security.AccessControl.PropagationFlags]"None"
-    } else {
-        $inherit = [System.Security.AccessControl.InheritanceFlags]"None"
-        $propagation = [System.Security.AccessControl.PropagationFlags]"None"
+        if ((Get-Item -LiteralPath $expanded).PSIsContainer -and $Recursive) {
+            $inherit = [System.Security.AccessControl.InheritanceFlags]"ContainerInherit,ObjectInherit"
+            $propagation = [System.Security.AccessControl.PropagationFlags]"None"
+        } else {
+            $inherit = [System.Security.AccessControl.InheritanceFlags]"None"
+            $propagation = [System.Security.AccessControl.PropagationFlags]"None"
+        }
+
+        $everyone = New-Object System.Security.Principal.SecurityIdentifier -ArgumentList "S-1-1-0"
+        $rule = New-Object System.Security.AccessControl.FileSystemAuditRule -ArgumentList $everyone, $rights, $inherit, $propagation, $auditFlags
+        $acl.AddAuditRule($rule)
+        Set-Acl -LiteralPath $expanded -AclObject $acl
+        return [pscustomobject]@{
+            Success = $true
+            Path = $expanded
+            Error = ""
+        }
+    } catch {
+        return [pscustomobject]@{
+            Success = $false
+            Path = $expanded
+            Error = $_.Exception.Message
+        }
     }
-
-    $everyone = New-Object System.Security.Principal.SecurityIdentifier -ArgumentList "S-1-1-0"
-    $rule = New-Object System.Security.AccessControl.FileSystemAuditRule -ArgumentList $everyone, $rights, $inherit, $propagation, $auditFlags
-    $acl.AddAuditRule($rule)
-    Set-Acl -LiteralPath $expanded -AclObject $acl
 }
 
 function Register-FimScheduledTask {
@@ -538,10 +556,22 @@ if (-not $SkipAuditPolicy) {
 
 if (-not $SkipSacl) {
     $register = Read-JsonFile -Path $registerPath
+    $saclFailures = @()
     foreach ($item in $register.items) {
         if ($item.enabled -eq $false) { continue }
         if ($item.auditCorrelation -eq $true) {
-            Add-FileSystemSacl -Path ([string]$item.path) -Recursive ([bool]$item.recursive)
+            $saclResult = Add-FileSystemSacl -Path ([string]$item.path) -Recursive ([bool]$item.recursive)
+            if (-not $saclResult.Success) {
+                $saclFailures += $saclResult
+                Write-Warning "SACL configuration failed for $($saclResult.Path): $($saclResult.Error)"
+            }
+        }
+    }
+    if ($saclFailures.Count -gt 0) {
+        $message = "SPEI-FIM SACL configuration completed with $($saclFailures.Count) warning(s). FIM hash/ACL scanning will continue, but Windows Security Log correlation may be incomplete until endpoint policy allows SACL updates."
+        Write-InstallerEvent -EventId 9010 -EntryType "Warning" -Message $message
+        if ($FailOnSaclError) {
+            throw $message
         }
     }
 }

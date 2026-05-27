@@ -71,6 +71,8 @@ Folder protection uses language-independent Windows SIDs for `SYSTEM`, `Administ
 
 If an older failed install left `C:\Program Files\SPEI-FIM` or `C:\ProgramData\SPEI-FIM` inaccessible, run `REPAIR-ACL-AS-ADMIN.bat` once, then run `INSTALL-AS-ADMIN.bat` again.
 
+On managed endpoints, domain or local policy may block SACL updates on protected OS paths such as `C:\Windows\System32\drivers\etc\hosts`. In that case the installer logs a warning and continues. Hash/ACL integrity monitoring, baseline creation, scheduled scans, local JSONL logging, and EFK forwarding still work; Windows Security Log user/process correlation may be incomplete until endpoint policy allows SACL updates.
+
 ## Filebeat input
 
 Use this template on the Windows endpoint or in your managed Filebeat policy:
@@ -134,6 +136,7 @@ The scanner is non-blocking and read-only. It includes these controls to reduce 
 - `excludePatterns` for high-churn paths.
 - Per-file hash/ACL failures are logged as findings instead of stopping the whole scan.
 - Windows Security Log correlation is read once per scan, not once per finding.
+- SACL installation failures are logged as installer warnings instead of blocking baseline creation or scheduled task registration.
 - Filebeat is granted read-only access to SPEI-FIM logs when its service account is known.
 - Local log retention is enforced on each scanner run. The default keeps at least 180 days and applies a 1024 MB safety cap to old local log files.
 

@@ -64,6 +64,9 @@ Expected result:
 - Scheduled task has missed-scan recovery enabled.
 - Application Event Log contains SPEI-FIM events.
 
+Note:
+- If endpoint policy blocks SACL updates on protected OS paths, the installer may print SACL warnings. The install can still pass if baseline creation, scheduled task registration, JSONL logging, and scan completion succeed.
+
 One-click verification:
 
   .\VERIFY-AS-ADMIN.bat
@@ -203,6 +206,7 @@ Pilot Acceptance Criteria
 - Filebeat forwards fim.test_alert to EFK.
 - EFK stores events in the approved index with at least 180 days retention.
 - EFK alert rules notify designated personnel for critical/high findings.
+- Any SACL warning is documented and assigned to endpoint policy remediation if Windows Security Log user/process correlation is required.
 - No business application crash or noticeable endpoint performance degradation during the scan.
 
 Evidence to Save

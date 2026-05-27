@@ -34,6 +34,8 @@ On non-English Windows builds, SPEI-FIM uses well-known Windows SIDs instead of 
 
 If validation still shows `Access denied` for `C:\Program Files\SPEI-FIM` or `C:\ProgramData\SPEI-FIM`, run `REPAIR-ACL-AS-ADMIN.bat` once and then re-run `INSTALL-AS-ADMIN.bat`.
 
+If the installer shows a SACL warning for a protected OS path such as `C:\Windows\System32\drivers\etc\hosts`, continue with verification. That policy issue affects Windows Security Log correlation only; the core FIM baseline, scheduled scan, local JSONL log, and EFK forwarding still install.
+
 ## Minimum fields to change
 
 In `config\deployment.local.json`:
@@ -143,6 +145,7 @@ Before formal production use:
 - Change `executionPolicyForTask` from `Bypass` to `AllSigned`.
 - Replace the example critical files register with the formally approved and signed register.
 - Deploy the Filebeat input from `efk\filebeat-windows-spei-fim.example.yml`.
+- Confirm endpoint policy allows SACL updates on monitored paths if user/process correlation from the Windows Security Log is required.
 - Keep monitored paths narrow. Do not enable whole-drive scans or database data/log directories.
 - Use `maxDepth`, `maxFilesPerItem`, `maxFileSizeMB`, and `excludePatterns` in the critical files register.
 - For the first workstation pilot, keep the default core register. Add database manager paths only after confirming the actual DB product and instance layout.
